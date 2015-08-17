@@ -19,8 +19,8 @@ def get_version():
         raise RuntimeError("Unable to find version string.")
 
 def get_long_description():
-    """ Read the README.txt """
-    with open('README.txt', 'rb') as readmefile:
+    """ Return the content of README """
+    with open('README', 'rb') as readmefile:
         return readmefile.read().decode('utf-8')
 
 setup(
