@@ -36,7 +36,7 @@ setup(
     packages=['yubistack'],
     include_package_data=True,
     data_files=[('/etc/yubico/yubistack.conf')],
-    install_requires=['requests', 'passlib'],
+    install_requires=['passlib', 'pycrypto', 'requests'],
     keywords='yubikey otp authentication',
     classifiers=[
         'License :: OSI Approved :: BSD License',
