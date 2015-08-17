@@ -33,7 +33,7 @@ setup(
     author="Doug O'Riordan",
     author_email='oriordan@mail.be',
 
-    packages=['yubistack', 'yubistack.ykauth', 'yubistack.ykval', 'yubistack.ykksm'],
+    packages=['yubistack'],
     include_package_data=True,
     data_files=[('/etc/yubico/yubistack.conf')],
     install_requires=['requests'],
