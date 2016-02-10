@@ -8,6 +8,7 @@ Yubikey Key Storage Manager - Decryption module
 import logging
 import re
 
+from .config import settings
 from .db import DBHandler
 from .utils import (
     aes128ecb_decrypt,
@@ -17,6 +18,18 @@ from .utils import (
 logger = logging.getLogger(__name__)
 OTP_REGEX = re.compile(r'^(?P<yk_id>[cbdefghijklnrtuv]{0,16})(?P<modhex>[cbdefghijklnrtuv]{32})$')
 
+try:
+    from .crypt import PrivateKey
+except ImportError:
+    PrivateKey = None
+    logger.exception('could not load crypto.PrivateKey')
+
+
+CRYPTER = None
+if settings.get('USE_KSM_ENCRYPTION') and PrivateKey:
+    CRYPTER = PrivateKey(settings['USE_KSM_ENCRYPTION'])
+
+
 class YKKSMError(Exception):
     """ Errors returned by the application """
     pass
@@ -25,6 +38,7 @@ class DBH(DBHandler):
     """
     Extending the generic DBHandler class with the required queries
     """
+
     def get_key_and_internalname(self, public_id):
         """
         Read token's AESkey and internalname for OTP decryption
@@ -37,10 +51,35 @@ class DBH(DBHandler):
         self._execute(query, (public_id,))
         return self._dictfetchone()
 
+
+class DecryptorDBH(DBH):
+    """
+    Transparently decrypt RSA encrypted aeskeys
+    """
+    def get_key_and_internalname(self, public_id):
+        data = DBH.get_key_and_internalname(self, public_id)
+        if data:
+            try:
+                # AES keys are 16 bytes (hex)
+                if len(data['aeskey']) != 32:
+                    raise ValueError
+                else:
+                    int(data['aeskey'], 16)
+            except ValueError:
+                # Encrypted ciphertext with base64 encoding
+                ciphertext = data['aeskey'].decode('base64')
+                data['aeskey'] = CRYPTER.decrypt(ciphertext)
+
+            return data
+
+
 class Decryptor(object):
     """ Object to decrypt an OTP """
-    def __init__(self,):
-        self.db = DBH(db='ykksm')
+    def __init__(self, db='ykksm'):
+        if settings.get('USE_KSM_ENCRYPTION'):
+            self.db = DecryptorDBH(db=db)
+        else:
+            self.db = DBH(db=db)
 
     def _parse_otp(self, otp):
         """
