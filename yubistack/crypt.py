@@ -12,7 +12,7 @@ from Crypto.Cipher import DES, DES3, AES, PKCS1_OAEP
 from Crypto.Hash import MD5
 from Crypto.Protocol.KDF import PBKDF1
 from Crypto.PublicKey import RSA
-from Crypto.Util import asn1
+from secretsharing import PlaintextToHexSecretSharer
 
 # Older versions of PyCrypto don't skip pad/unpad, we only care about the
 # PKCS#7 variants here.
@@ -21,12 +21,14 @@ try:
 except ImportError:
 
     def pad(data, block_size):
+        """Pad a block of data to align with block_size using PKCS#7 padding."""
         return data + chr(len(data)) * ((block_size - len(data)) % block_size)
 
     def unpad(data, block_size):
+        """Remove block padding from PKCS#7 padding."""
         if len(data) % block_size:
             raise ValueError('Input data is not padded')
-        
+
         pad_len = ord(data[-1])
         if pad_len < 1 or pad_len > min(block_size, len(data)):
             raise ValueError('Incorrect padding')
@@ -42,7 +44,12 @@ logger = logging.getLogger(__name__)
 
 
 EPILOG = '''
-In order to start using the encrypter/decrypter, you have to set up a key
+commands:
+  secret                generate a new shared secret
+  test-secret           reconstruct a shared secret from shares
+  test <keydir>         encrypt & decrypt <rounds> number of keys
+
+in order to start using the encrypter/decrypter, you have to set up a key
 directory first:
 
   ~$ mkdir keys
@@ -55,44 +62,60 @@ directory first:
   keys$ openssl rsa -in 1.private -pubout > 1.public
   keys$ openssl rsa -in 2.private -pubout > 2.public
 
+now you can split the secret used to protect 2.private using the secret
+command:
+
+  ~$ python yubistack/crypt.py secret
+
 '''
 
 
 class SHA2(object):
+    """Wrapper for the SHA-256 hashing algorithm."""
     digest_size = 32
 
     def __init__(self, *args):
         if args and args[0] is object():
-            self._h = args[0].copy()
+            self._hash = args[0].copy()
         else:
-            self._h = hashlib.new('sha256')
+            self._hash = hashlib.new('sha256')
 
     def copy(self):
-        return SHA2(self._h.copy())
+        """Make a (mutable) copy of the hash."""
+        return SHA2(self._hash.copy())
 
     def digest(self, *args):
-        return self._h.digest(*args)
+        """Calculate the hash digest."""
+        return self._hash.digest(*args)
 
     def hexdigest(self, *args):
-        return self._h.hexdigest(*args)
+        """Calculate the hash hexdigest."""
+        return self._hash.hexdigest(*args)
 
     def update(self, *args):
-        return self._h.update(*args)
+        """Update the hash."""
+        return self._hash.update(*args)
 
 
 SHA2.new = SHA2
 
 
 class Crypter(object):
+    """Crypter base class for doing encryption and decryption."""
+
     mask = '*.*'
+    shares = 2
 
     def __init__(self, keydir):
         # Keydir path
         self.keydir = os.path.abspath(keydir)
+        # Secret sharer
+        self.sharer = PlaintextToHexSecretSharer()
+        self._passphrase = None
         # Our key rotation number
         self.krn = None
         self.key = {}
-        
+
         # Load keyfile with highest krn from disk
         keyfiles = os.path.join(self.keydir, self.mask)
         for path in sorted(glob.glob(keyfiles)):
@@ -109,50 +132,70 @@ class Crypter(object):
         if not self.krn:
             raise ValueError('No key was loaded')
 
-        logging.info('Crypter krn=%d' % (self.krn,))
+        logging.info('Crypter krn=%d', self.krn)
 
     def cipher(self, krn=None):
+        """Generate a cipher for the given key rotation number."""
         return PKCS1_OAEP.new(
             self.key[krn or self.krn],  # key
             SHA2,                       # digest
         )
 
     def decrypt(self, ciphertext, krn=None):
+        """Decrypt a ciphertext."""
         return self.cipher(krn).decrypt(ciphertext)
 
     def encrypt(self, plaintext, krn=None):
+        """Encrypt a plaintext."""
         return self.cipher(krn).encrypt(plaintext)
+
+    def load_keyfile(self, keyfile):
+        """Load a key file."""
+        raise NotImplementedError('Implement me in subclass')
 
 
 class PublicKey(Crypter):
+    """Public key that can encrypt."""
+
     mask = '*.public'
 
+    def decrypt(self, ciphertext, krn=None):
+        raise NotImplementedError("Public key can only encrypt")
+
     def load_keyfile(self, keyfile):
-        with open(keyfile) as fp:
-            return RSA.importKey(fp.read())
+        with open(keyfile) as handle:
+            return RSA.importKey(handle.read())
 
 
 class PrivateKey(Crypter):
+    """Private key that can both encrypt and decrypt.
+
+    The private key may be encrypted using 3DES-CBC or AES-128-CBC, if so, it
+    is assumed that the decryption secret is split using Shamir's Shared Secret
+    algorithm.
+    """
+
     mask = '*.private'
 
     def load_keyfile(self, keyfile):
-        with open(keyfile) as fp:
-            keydata = fp.read()
+        with open(keyfile) as handle:
+            keydata = handle.read()
             try:
                 return RSA.importKey(keydata)
             except ValueError:
                 return RSA.importKey(self.load_encrypted_keydata(keydata))
 
     def load_encrypted_keydata(self, keydata):
+        """Load a key from encrypted keydata (in PEM format)."""
         lines = keydata.strip().replace(' ', '').splitlines()
         if not lines[1].startswith('Proc-Type:4,ENCRYPTED'):
             raise TypeError('Unsupported encryption')
 
-        DEK = lines[2].split(':')
-        if len(DEK) != 2 or DEK[0] != 'DEK-Info':
+        dek = lines[2].split(':')
+        if len(dek) != 2 or dek[0] != 'DEK-Info':
             raise ValueError('PEM encryption method not supported')
 
-        algo, salt = DEK[1].split(',')
+        algo, salt = dek[1].split(',')
         salt = salt.decode('hex')
 
         if algo == 'DES-CBC':
@@ -177,13 +220,26 @@ class PrivateKey(Crypter):
 
     @property
     def passphrase(self):
-        if not hasattr(self, '_passphrase'):
-            self._passphrase = getpass.getpass('Private key passphrase: ')
+        """Return the loaded passphrase or request the shares to derive it.
+
+        This prompts the user for shares of the shared secret.
+        """
+        if self._passphrase is None:
+            shares = []
+            for part in range(self.shares):
+                while True:
+                    share = raw_input('enter share [%d/%d]: ' % (part + 1, self.shares))
+                    if share:
+                        shares.append(share)
+                        break
+
+            self._passphrase = self.sharer.recover_secret(shares)
+
         return self._passphrase
 
 
-
 def run():
+    """Main entry point."""
     import argparse
 
     logging.basicConfig(
@@ -195,26 +251,64 @@ def run():
         epilog=EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument('-r', '--rounds', type=int, default=100)
-    parser.add_argument('-k', '--krn', type=int, default=None)
-    parser.add_argument('--pub', default=False, action='store_true')
-    parser.add_argument('keydir')
+    group = parser.add_argument_group('test args')
+    group.add_argument('-r', '--rounds', type=int, default=100)
+    group.add_argument('-k', '--krn', type=int, default=None)
+    group.add_argument('--pub', default=False, action='store_true')
+    group = parser.add_argument_group('secret args')
+    group.add_argument(
+        '-s', '--shares', type=int, default=25, help='shares (default: 25)')
+    group.add_argument(
+        '-p', '--parts', type=int, default=2, help='parts (default: 2)')
+    parser.add_argument('command')
+    parser.add_argument('args', nargs='*')
     args = parser.parse_args()
 
-    if args.pub:
-        crypter = PublicKey(args.keydir)
-    else:
-        crypter = PrivateKey(args.keydir)
+    if args.command == 'secret':
+        sharer = PlaintextToHexSecretSharer()
+        secret = ''
+        while not secret:
+            secret = getpass.getpass('Please enter a secret: ')
 
-    logger.info('running %d test rounds' % (args.rounds,))
-    for r in range(args.rounds):
-        p = os.urandom(16).encode('hex')
-        print('encrypt', p, len(p))
-        c = crypter.encrypt(p, krn=args.krn)
-        print(base64.b64encode(c))
-        if not args.pub:
-            assert crypter.decrypt(c, krn=args.krn) == p, 'round %d failed' % (r,)
-    logger.info('all good')
+        shares = sharer.split_secret(secret, args.parts, args.shares)
+        for share in shares:
+            print(share)
+
+    elif args.command == 'test-secret':
+        sharer = PlaintextToHexSecretSharer()
+        shares = []
+        while True:
+            share = raw_input('Share: ')
+            if not share:
+                break
+            shares.append(share)
+
+        print('Secret: ' + sharer.recover_secret(shares))
+
+    elif args.command == 'test':
+        if not args.args:
+            parser.error('missing keydir')
+            return 1
+
+        if args.pub:
+            crypter = PublicKey(args.args[0])
+        else:
+            crypter = PrivateKey(args.args[0])
+
+        logger.info('running %d test rounds', args.rounds)
+        for count in range(args.rounds):
+            plaintext = os.urandom(16).encode('hex')
+            print('encrypt', plaintext)
+            ciphertext = crypter.encrypt(plaintext, krn=args.krn)
+            print(base64.b64encode(ciphertext))
+            if not args.pub:
+                assert crypter.decrypt(ciphertext, krn=args.krn) == plaintext, \
+                    'round %d failed' % (count,)
+        logger.info('all good')
+
+    else:
+        parser.error('unknown command')
+        return 1
 
 
 if __name__ == '__main__':

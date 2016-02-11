@@ -26,8 +26,8 @@ except ImportError:
 
 
 CRYPTER = None
-if settings.get('USE_KSM_ENCRYPTION') and PrivateKey:
-    CRYPTER = PrivateKey(settings['USE_KSM_ENCRYPTION'])
+if settings.get('YKKSM_KEYDIR') and PrivateKey:
+    CRYPTER = PrivateKey(settings['YKKSM_KEYDIR'])
 
 
 class YKKSMError(Exception):
@@ -76,7 +76,7 @@ class DecryptorDBH(DBH):
 class Decryptor(object):
     """ Object to decrypt an OTP """
     def __init__(self, db='ykksm'):
-        if settings.get('USE_KSM_ENCRYPTION'):
+        if settings.get('YKKSM_KEYDIR'):
             self.db = DecryptorDBH(db=db)
         else:
             self.db = DBH(db=db)

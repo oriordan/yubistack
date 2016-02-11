@@ -26,7 +26,6 @@ DEFAULT_CRYPT_CONTEXT = {
 VALUES = [
     ('DATABASES', {}),
     ('USE_HSM', False),
-    ('USE_KSM_ENCRYPTION', False),
     ('USE_NATIVE_YKVAL', False),
     ('USE_NATIVE_YKKSM', False),
     ('CRYPT_CONTEXT', DEFAULT_CRYPT_CONTEXT),
@@ -34,6 +33,7 @@ VALUES = [
     ('YKVAL_CLIENT_SECRET', ''),
     ('YKVAL_SERVERS', []),
     ('YKKSM_SERVERS', []),
+    ('YKKSM_KEYDIR', False),
     ('LOGLEVEL', 'INFO'),
     ('LOGFILE', '/tmp/yubistack.log'),
     ('SYNC_SERVERS', []),
