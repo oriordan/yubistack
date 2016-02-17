@@ -32,6 +32,7 @@ VALUES = [
     ('YKVAL_CLIENT_ID', None),
     ('YKVAL_CLIENT_SECRET', ''),
     ('YKVAL_SERVERS', []),
+    ('YKKSM_KEYDIR', ''),
     ('YKKSM_SERVERS', []),
     ('YKKSM_KEYDIR', False),
     ('LOGLEVEL', 'INFO'),

@@ -133,7 +133,7 @@ def decrypt_otp(otp, urls=None, decryptor=None):
                 resp = {}
                 for i in data:
                     key, val = i.split('=')
-                    resp['yk_%s' % key] = int(val, 16)
+                    resp[key] = int(val, 16)
                 return resp
     else:
         logger.error("No KSM service provided. Can't decrypt OTP.")
