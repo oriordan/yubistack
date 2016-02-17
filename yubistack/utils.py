@@ -255,6 +255,8 @@ def wsgi_response(resp, start_response, apikey=b'', extra=None, status=200):
     # yubikey-val's getUTCTimeStamp() function...
     now = datetime.utcnow().isoformat().replace('.', 'Z')[:-2]
     resp_data = {'status': resp, 't': now}
+    if not extra:
+        extra = {}
     for key, val in extra.items():
         resp_data[key] = val
     signature = sign(resp_data, apikey)
