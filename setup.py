@@ -34,8 +34,6 @@ setup(
     author_email='oriordan@mail.be',
 
     packages=['yubistack'],
-    include_package_data=True,
-    data_files=[('/etc/yubico/yubistack.conf')],
     install_requires=['passlib', 'pycrypto', 'requests'],
     keywords='yubikey otp authentication',
     classifiers=[
