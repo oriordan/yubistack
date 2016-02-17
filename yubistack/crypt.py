@@ -1,12 +1,16 @@
 from __future__ import print_function
 
 import base64
-import getpass
+import binascii
 import glob
 import hashlib
 import logging
 import os
 import re
+import string
+import sys
+import termios
+import tty
 
 from Crypto.Cipher import DES, DES3, AES, PKCS1_OAEP
 from Crypto.Hash import MD5
@@ -26,12 +30,20 @@ except ImportError:
     def unpad(data, block_size):
         if len(data) % block_size:
             raise ValueError('Input data is not padded')
-        
-        pad_len = ord(data[-1])
+
+        if isinstance(data[-1], int):
+            pad_len = data[-1]
+        else:
+            pad_len = ord(data[-1])
+
         if pad_len < 1 or pad_len > min(block_size, len(data)):
             raise ValueError('Incorrect padding')
 
-        elif data[-pad_len:] != chr(pad_len) * pad_len:
+        padding = chr(pad_len) * pad_len
+        if isinstance(data, bytes):
+            padding = padding.encode('ascii')
+
+        if data[-pad_len:] != padding:
             raise ValueError('PKCS#7 padding incorrect')
 
         else:
@@ -90,9 +102,9 @@ class Crypter(object):
         # Keydir path
         self.keydir = os.path.abspath(keydir)
         # Our key rotation number
-        self.krn = None
+        self.krn = 0
         self.key = {}
-        
+
         # Load keyfile with highest krn from disk
         keyfiles = os.path.join(self.keydir, self.mask)
         for path in sorted(glob.glob(keyfiles)):
@@ -106,7 +118,7 @@ class Crypter(object):
 
             self.key[krn] = self.load_keyfile(path)
 
-        if not self.krn:
+        if self.krn == 0:
             raise ValueError('No key was loaded')
 
         logging.info('Crypter krn=%d' % (self.krn,))
@@ -153,7 +165,7 @@ class PrivateKey(Crypter):
             raise ValueError('PEM encryption method not supported')
 
         algo, salt = DEK[1].split(',')
-        salt = salt.decode('hex')
+        salt = binascii.unhexlify(salt)
 
         if algo == 'DES-CBC':
             key = PBKDF1(self.passphrase, salt, 8, 1, MD5)
@@ -172,15 +184,54 @@ class PrivateKey(Crypter):
             raise TypeError('%s: cipher not supported' % (algo,))
 
         lines = lines[3:-1]
-        data = ''.join(lines).decode('base64')
+        data = base64.b64decode(''.join(lines))
         return unpad(obj.decrypt(data), obj.block_size)
 
     @property
     def passphrase(self):
         if not hasattr(self, '_passphrase'):
-            self._passphrase = getpass.getpass('Private key passphrase: ')
+            try:
+                return os.environ['YKKSM_PASSPHRASE']
+            except KeyError:
+                self._passphrase = self._getpass_cooked('Private key passphrase: ')
+                os.environ['YKKSM_PASSPHRASE'] = self._passphrase
         return self._passphrase
 
+    def _getpass_cooked(self, prompt):
+        print(prompt)
+        phrase = []
+
+        #fd = os.open('/dev/tty', os.O_RDWR|os.O_NOCTTY)
+        fd = sys.stdin.fileno()
+        old = termios.tcgetattr(fd)
+        flg = termios.TCSAFLUSH
+        if hasattr(termios, 'TCSASOFT'):
+            flg |= termios.TCSASOFT
+
+        try:
+            tty.setraw(fd)
+            sys.stdout.flush()
+            while True:
+                key = sys.stdin.read(1)
+                if key in '\r\n': # return
+                    sys.stdout.write('\n')
+                    sys.stdout.flush()
+                    return ''.join(phrase)
+                elif key == chr(0x7f): # backspace
+                    sys.stdout.write('\r' + ' ' * len(phrase))
+                    if phrase:
+                        phrase = phrase[:-1]
+                    sys.stdout.write('\r' + '*' * len(phrase))
+                    sys.stdout.flush()
+                elif key == chr(0x03): # ^C
+                    raise KeyboardInterrupt()
+                else:
+                    if key in string.printable:
+                        phrase.append(key)
+                        sys.stdout.write('*')
+                        sys.stdout.flush()
+        finally:
+            termios.tcsetattr(fd, flg, old)
 
 
 def run():
@@ -198,23 +249,38 @@ def run():
     parser.add_argument('-r', '--rounds', type=int, default=100)
     parser.add_argument('-k', '--krn', type=int, default=None)
     parser.add_argument('--pub', default=False, action='store_true')
-    parser.add_argument('keydir')
+    parser.add_argument('-d', '--keydir', default='/etc/yubico/ksm-keys')
+    parser.add_argument('command')
     args = parser.parse_args()
 
-    if args.pub:
+    if args.command == 'encrypt':
         crypter = PublicKey(args.keydir)
-    else:
-        crypter = PrivateKey(args.keydir)
+        while True:
+            plaintext = input('plain text: ')
+            if not plaintext:
+                break
 
-    logger.info('running %d test rounds' % (args.rounds,))
-    for r in range(args.rounds):
-        p = os.urandom(16).encode('hex')
-        print('encrypt', p, len(p))
-        c = crypter.encrypt(p, krn=args.krn)
-        print(base64.b64encode(c))
-        if not args.pub:
-            assert crypter.decrypt(c, krn=args.krn) == p, 'round %d failed' % (r,)
-    logger.info('all good')
+            ciphertext = crypter.encrypt(plaintext.encode('utf-8'), krn=args.krn)
+            print(base64.b64encode(ciphertext).decode('ascii'))
+
+    elif args.command == 'test':
+        if args.pub:
+            crypter = PublicKey(args.keydir)
+        else:
+            crypter = PrivateKey(args.keydir)
+
+        logger.info('running %d test rounds' % (args.rounds,))
+        for r in range(args.rounds):
+            p = os.urandom(16).encode('hex')
+            print('encrypt', p, len(p))
+            c = crypter.encrypt(p, krn=args.krn)
+            print(base64.b64encode(c))
+            if not args.pub:
+                assert crypter.decrypt(c, krn=args.krn) == p, 'round %d failed' % (r,)
+        logger.info('all good')
+
+    else:
+        print('No such command {!r}'.format(args.command))
 
 
 if __name__ == '__main__':
