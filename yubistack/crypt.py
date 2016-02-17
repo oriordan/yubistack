@@ -123,7 +123,6 @@ class Crypter(object):
     def __init__(self, keydir):
         # Keydir path
         self.keydir = os.path.abspath(keydir)
-        self._passphrase = None
         # Our key rotation number
         self.krn = 0
         self.key = {}
