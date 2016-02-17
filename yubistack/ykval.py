@@ -304,7 +304,10 @@ an already validated OTP')
         """ Make HTTP GET call to remote server """
         try:
             req = requests.get(url, timeout=timeout)
-            dqueue.put({'server': server, 'text': req.text})
+            if req.status_code == 200:
+                dqueue.put({'server': server, 'text': req.text})
+            else:
+                logger.warning('Recieved status code %s for %s' % (req.status_code, url))
         except Exception as err:
             logger.warning('Failed to retrieve %s: %s', url, err)
 
