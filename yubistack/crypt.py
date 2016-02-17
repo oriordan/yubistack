@@ -6,6 +6,7 @@ Utilities to load encrypted private keys
 """
 
 import base64
+import binascii
 import glob
 import hashlib
 import logging
@@ -207,7 +208,7 @@ class PrivateKey(Crypter):
             raise ValueError('PEM encryption method not supported')
 
         algo, salt = dek[1].split(',')
-        salt = salt.decode('hex')
+        salt = binascii.unhexlify(salt)
 
         if algo == 'DES-CBC':
             key = PBKDF1(self.passphrase, salt, 8, 1, MD5)
@@ -240,7 +241,7 @@ class PrivateKey(Crypter):
         return self._passphrase
 
     def _getpass_cooked(self, prompt):
-        print(prompt)
+        sys.stdout.write(prompt + '\r\n')
         phrase = []
 
         fd = sys.stdin.fileno()
