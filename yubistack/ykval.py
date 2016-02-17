@@ -307,7 +307,7 @@ an already validated OTP')
             if req.status_code == 200:
                 dqueue.put({'server': server, 'text': req.text})
             else:
-                logger.warning('Recieved status code %s for %s' % (req.status_code, url))
+                logger.warning('Recieved status code %s for %s', req.status_code, url)
         except Exception as err:
             logger.warning('Failed to retrieve %s: %s', url, err)
 

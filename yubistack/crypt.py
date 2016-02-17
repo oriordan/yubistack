@@ -1,12 +1,15 @@
-from __future__ import print_function
+"""
+ykval.crypt
+~~~~~~~~~~~
+
+Utilities to load encrypted private keys
+"""
 
 import base64
-import binascii
 import glob
 import hashlib
 import logging
 import os
-import re
 import string
 import sys
 import termios
@@ -16,14 +19,12 @@ from Crypto.Cipher import DES, DES3, AES, PKCS1_OAEP
 from Crypto.Hash import MD5
 from Crypto.Protocol.KDF import PBKDF1
 from Crypto.PublicKey import RSA
-from secretsharing import PlaintextToHexSecretSharer
 
 # Older versions of PyCrypto don't skip pad/unpad, we only care about the
 # PKCS#7 variants here.
 try:
     from Crypto.Util.Padding import pad, unpad
 except ImportError:
-
     def pad(data, block_size):
         """Pad a block of data to align with block_size using PKCS#7 padding."""
         return data + chr(len(data)) * ((block_size - len(data)) % block_size)
@@ -121,8 +122,6 @@ class Crypter(object):
     def __init__(self, keydir):
         # Keydir path
         self.keydir = os.path.abspath(keydir)
-        # Secret sharer
-        self.sharer = PlaintextToHexSecretSharer()
         self._passphrase = None
         # Our key rotation number
         self.krn = 0
@@ -216,8 +215,8 @@ class PrivateKey(Crypter):
 
         elif algo == 'DES-EDE3-CBC':
             key = PBKDF1(self.passphrase, salt, 16, 1, MD5)
-            key+= PBKDF1(key + passphrase, salt, 8, 1, MD5)
-            obj = DES3.new(key, DES3.MOE_CBC, salt)
+            key += PBKDF1(key + self.passphrase, salt, 8, 1, MD5)
+            obj = DES3.new(key, DES3.MODE_CBC, salt)
 
         elif algo == 'AES-128-CBC':
             key = PBKDF1(self.passphrase, salt[:8], 16, 1, MD5)
@@ -244,7 +243,6 @@ class PrivateKey(Crypter):
         print(prompt)
         phrase = []
 
-        #fd = os.open('/dev/tty', os.O_RDWR|os.O_NOCTTY)
         fd = sys.stdin.fileno()
         old = termios.tcgetattr(fd)
         flg = termios.TCSAFLUSH
@@ -313,7 +311,7 @@ def run():
         else:
             crypter = PrivateKey(args.keydir)
 
-        logger.info('running %d test rounds' % (args.rounds,))
+        logger.info('running %d test rounds', args.rounds)
         for r in range(args.rounds):
             p = os.urandom(16).encode('hex')
             print('encrypt', p, len(p))
@@ -328,5 +326,4 @@ def run():
 
 
 if __name__ == '__main__':
-    import sys
     sys.exit(run())

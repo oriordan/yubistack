@@ -17,7 +17,8 @@ False
 >>> from yubistack import Verifyer
 >>> v = Verifyer()
 >>> v.verify(1, 'ccccccbcgujhingjrdejhgfnuetrgigvejhhgbkugded')
-{'otp': 'ccccccbcgujhingjrdejhgfnuetrgigvejhhgbkugded', 'time': '2015-04-14T20:07:20Z5261', 'nonce': None, 'status': 'OK', 'sl': None, 'signature': 'h0P2wfJUqHQFuRpG4n1Kvk3KacE='}
+{'otp': 'ccccccbcgujhingjrdejhgfnuetrgigvejhhgbkugded', 'time': '2015-04-14T20:07:20Z5261', \
+ 'nonce': None, 'status': 'OK', 'sl': None, 'signature': 'h0P2wfJUqHQFuRpG4n1Kvk3KacE='}
 >>>
 >>> from yubistack import Decryptor
 >>> d = Decryptor()
@@ -25,7 +26,7 @@ False
 {'counter': '0235', 'low':' 21c4', 'high': 'b2', 'use':'42'}
 """
 
-__version__ = '0.4.1'
+__version__ = '0.4.2'
 __all__ = [
     'settings',
     'Client',
