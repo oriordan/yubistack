@@ -21,11 +21,15 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+HEX_CHARS = '0123456789abcdef'
+MODHEX_CHARS = 'cbdefghijklnrtuv'
 if sys.version_info < (3,):
     import string
-    MODHEX_MAP = string.maketrans('cbdefghijklnrtuv', '0123456789abcdef')
+    MODHEX_TO_HEX_MAP = string.maketrans('cbdefghijklnrtuv', '0123456789abcdef')
+    HEX_TO_MODHEX_MAP = string.maketrans(HEX_CHARS, MODHEX_CHARS)
 else:
-    MODHEX_MAP = str.maketrans('cbdefghijklnrtuv', '0123456789abcdef')
+    MODHEX_TO_HEX_MAP = str.maketrans('cbdefghijklnrtuv', '0123456789abcdef')
+    HEX_TO_MODHEX_MAP = str.maketrans(HEX_CHARS, MODHEX_CHARS)
 
 def parse_querystring(query_string):
     """
@@ -50,7 +54,16 @@ def modhex2hex(modhex):
     'aa1100223344bc4c833a4f36bdabaf538f0cd2f7f416'
     """
     # Python2 fails to translate unicode
-    return str(modhex).translate(MODHEX_MAP)
+    return str(modhex).translate(MODHEX_TO_HEX_MAP)
+
+def hex2modhex(_hex):
+    """
+    Turn regular hex into modhex
+    >>> hex2modhex('aa1100223344bc4c833a4f36bdabaf538f0cd2f7f416')
+    'llbbccddeeffnrfrjeelfvehntlnlvgejvcrtdvivfbh'
+    """
+    # Python2 fails to translate unicode
+    return str(_hex).translate(HEX_TO_MODHEX_MAP)
 
 def aes128ecb_decrypt(key, cipher):
     """
@@ -63,12 +76,31 @@ def aes128ecb_decrypt(key, cipher):
     """
     key = unhexlify(key)
     iv = unhexlify('00000000000000000000000000000000')
+    decryptor = AES.new(key, AES.MODE_ECB, iv)
     cipher = modhex2hex(cipher)
     cipher = unhexlify(cipher)
-    decryptor = AES.new(key, AES.MODE_ECB, iv)
     plain = decryptor.decrypt(cipher)
     plain = hexlify(plain)
     return plain
+
+def aes128ecb_encrypt(key, plain):
+    """
+    Decrypt ciphertext with key using AES128CBC encryption
+    >>> key = 'abcdef0123456789abcdef0123456789'
+    >>> plain = '46b029d5340bbd23b39c6c9154d095b1'
+    >>> cipher = aes128ecb_encrypt(key, plain)
+    >>> cipher == '16e1e5d9d3991004452007e302000000'
+    True
+    """
+    key = unhexlify(key)
+    iv = unhexlify('00000000000000000000000000000000')
+    encryptor = AES.new(key, AES.MODE_ECB, iv)
+    plain = plain.encode() if not isinstance(plain, bytes) else plain
+    plain = unhexlify(plain)
+    cipher = encryptor.encrypt(plain)
+    cipher = hexlify(cipher)
+    cipher = hex2modhex(cipher.decode())
+    return cipher
 
 def calculate_crc(token):
     """
@@ -78,7 +110,7 @@ def calculate_crc(token):
     """
     crc = 0xffff
     token = unhexlify(token)
-    for i in range(16):
+    for i in range(len(token)):
         if isinstance(token[i], str):
             # Python 2.X
             crc = crc ^ ord(token[i])
