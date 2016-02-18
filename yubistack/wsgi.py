@@ -142,13 +142,17 @@ def sync(environ, start_response):
         synclib = Sync()
         local_params = synclib.sync_local(sync_params)
         output = 'OK'
+        status_code = 200
     except YKSyncError as err:
         output = str(err)
+        status_code = 401
     except Exception as err:
         logger.exception('ERROR: %s', err)
         output = 'BACKEND_ERROR'
+        status_code = 500
     finally:
-        return wsgi_response(output, start_response, apikey=''.encode(), extra=local_params)
+        return wsgi_response(output, start_response, apikey=''.encode(),
+                             extra=local_params, status=status_code)
 
 def resync(environ, start_response):
     """
@@ -163,27 +167,26 @@ def resync(environ, start_response):
         resync_params = parse_querystring(environ['QUERY_STRING'])
         synclib = Sync()
         output = synclib.resync_local(resync_params)
+        status_code = 200
     except YKSyncError as err:
         output = str(err)
+        status_code = 401
     except Exception as err:
         logger.exception('ERROR: %s', err)
         output = ''
+        status_code = 500
     finally:
-        start_response('200 OK', [('Content-Type', 'text/plain')])
+        start_response('%d OK' % status_code, [('Content-Type', 'text/plain')])
         return [output.encode()]
 
 def router(environ, start_response):
     """ Simple WSGI router """
     path = environ.get('PATH_INFO', '')
     match = re.match(URI_REGEX, path)
-    if not match:
+    if not match or not match.groupdict()['resource']:
         start_response('500 Error', [('Content-Type', 'text/plain')])
         return ['Invalid URI'.encode()]
-    request = match.groupdict()
-    if not request['resource']:
-        start_response('500 Error', [('Content-Type', 'text/plain')])
-        return ['Invalid URI'.encode()]
-    func = globals()[request['resource']]
+    func = globals()[match.groupdict()['resource']]
     return func(environ, start_response)
 
 def main():
