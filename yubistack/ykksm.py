@@ -9,6 +9,8 @@ import base64
 import logging
 import re
 
+from Crypto.Random import atfork
+
 from .config import settings
 from .db import DBHandler
 from .utils import (
