@@ -244,7 +244,8 @@ def parse_sync_response(sync_response):
     }
     for name, regex in checks.items():
         if name not in params or not re.match(regex, params[name]):
-            logger.error('Cannot parse "%s". Response from sync server:\n%s', name, sync_response)
+            raise ValueError('Cannot parse "%s". Response from sync server:\n%s' %
+                             (name, sync_response))
         else:
             # Convert numbers to int
             params[name] = int(params[name]) if params[name].isdigit() else params[name]
