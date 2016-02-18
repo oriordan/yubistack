@@ -5,6 +5,7 @@ yubistack.ykksm
 Yubikey Key Storage Manager - Decryption module
 """
 
+import base64
 import logging
 import re
 
@@ -66,8 +67,10 @@ class DecryptorDBH(DBH):
                 else:
                     int(data['aeskey'], 16)
             except ValueError:
+                # Re-initialize RNG to deal with forks in uwsgi
+                atfork()
                 # Encrypted ciphertext with base64 encoding
-                ciphertext = data['aeskey'].decode('base64')
+                ciphertext = base64.b64decode(data['aeskey'])
                 data['aeskey'] = CRYPTER.decrypt(ciphertext)
 
             return data
