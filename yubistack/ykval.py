@@ -337,7 +337,11 @@ an already validated OTP')
         # Parse response
         valid_answers = 0
         for resp in responses:
-            resp_params = parse_sync_response(resp['text'])
+            try:
+                resp_params = parse_sync_response(resp['text'])
+            except ValueError as err:
+                logger.error('Failed to parse response of %s: %s', resp['server'], err)
+                continue
             logger.debug('local DB contains %s', local_params)
             logger.debug('response contains %s', resp_params)
             logger.debug('OTP contains %s', otp_params)
