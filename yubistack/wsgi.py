@@ -46,6 +46,7 @@ def authenticate(environ, start_response):
     Handle authentications
     """
     REQUIRED_PARAMS = ['username', 'password', 'otp']
+    username = '?'
     try:
         # Parse POST request
         try:
@@ -54,21 +55,24 @@ def authenticate(environ, start_response):
             request_body_size = 0
         request_body = environ['wsgi.input'].read(request_body_size)
         params = parse_querystring(request_body.decode())
+        username = params.get('username', '?')
         _params = params.copy()
         _params['password'] = '********'
-        logger.debug('PROCESSED QUERYSTRING: %s', _params)
+        logger.debug('%s: PROCESSED QUERYSTRING: %s', username, _params)
         for req_param in REQUIRED_PARAMS:
             if req_param not in params:
                 raise YKAuthError("Missing parameter: '%s'" % req_param)
         client = Client()
         output = client.authenticate(params['username'], params['password'], params['otp'])
     except YKAuthError as err:
-        logger.exception('Authentication error: %s', err)
+        logger.exception('%s: Authentication error: %s', username, err)
         output = False
     except Exception as err:
-        logger.exception('Backend error: %s', err)
+        logger.exception('%s: Backend error: %s', username, err)
         output = None
         raise
+    else:
+        logger.info('%s: Authenticated successful', username)
     finally:
         if output == True:
             resp = (200, 'true')
@@ -104,9 +108,11 @@ def verify(environ, start_response):
     Handle OTP Validation
     """
     apikey = ''.encode()
+    username = '?'
     try:
         params = parse_querystring(environ['QUERY_STRING'])
-        logger.debug('PROCESSED QUERYSTRING: %s', params)
+        username = params.get('username', '?')
+        logger.debug('%s: PROCESSED QUERYSTRING: %s', username, params)
         verifyer = Verifyer()
         kwargs = params.copy()
         if 'id' in kwargs:
@@ -116,12 +122,13 @@ def verify(environ, start_response):
         apikey = verifyer.get_client_apikey(params.get('id'))
         output = verifyer.verify(params.get('id'), params.get('otp'), **kwargs)
     except YKValError as err:
-        logger.exception('Validation error: %s', err)
+        logger.exception('%s: Validation error: %s', username, err)
         output = '%s' % err
     except Exception as err:
-        logger.exception('Backend error: %s', err)
+        logger.exception('%s: Backend error: %s', username, err)
         output = 'BACKEND_ERROR'
     finally:
+        logger.info('%s: Verified', username)
         return wsgi_response(output, start_response, apikey=apikey, extra=None)
 
 def sync(environ, start_response):
