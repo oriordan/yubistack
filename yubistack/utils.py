@@ -229,20 +229,20 @@ def counters_gte(params1, params2):
         or (params1['yk_counter'] == params2['yk_counter'] \
         and params1['yk_use'] >= params2['yk_use'])
 
+SYNC_RESPONSE_CHECKS = {
+    'modified': re.compile(r'(-1|\d+)'),
+    'yk_publicname': re.compile(r'[cbdefghijklnrtuv]+'),
+    'yk_counter': re.compile(r'(-1|\d+)'),
+    'yk_use': re.compile(r'(-1|[0-9]+)'),
+    'yk_high': re.compile(r'(-1|[0-9]+)'),
+    'yk_low': re.compile(r'(-1|[0-9]+)'),
+    'nonce': re.compile(r'[a-zA-Z0-9]+'),
+}
 def parse_sync_response(sync_response):
     """ Parsing query string parameters into a dict """
     params = [line.split('=', 1) for line in sync_response.split('\r\n') if '=' in line]
     params = dict(params)
-    checks = {
-        'modified': r'(-1|\d+)',
-        'yk_publicname': r'[cbdefghijklnrtuv]+',
-        'yk_counter': r'(-1|\d+)',
-        'yk_use': r'(-1|[0-9]+)',
-        'yk_high': r'(-1|[0-9]+)',
-        'yk_low': r'(-1|[0-9]+)',
-        'nonce': r'[a-zA-Z0-9]+',
-    }
-    for name, regex in checks.items():
+    for name, regex in SYNC_RESPONSE_CHECKS.items():
         if name not in params or not re.match(regex, params[name]):
             raise ValueError('Cannot parse "%s". Response from sync server:\n%s' %
                              (name, sync_response))
