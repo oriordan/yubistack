@@ -1,0 +1,117 @@
+########################################
+#
+# Example yubistack configuration file
+#
+# This config contains Python code, and
+# will be imported as python module.
+#
+########################################
+LOGLEVEL = 'DEBUG'
+LOGFILE = '/var/log/yubistack.log'
+
+# Database configuration
+# 
+# Since the three components (auth, validate, decrypt)
+# are using different data, and can run separately, we
+# have different configuration for each of them.
+#
+# Example:
+# DATABASES = {
+#    'yubiauth': {
+#        'ENGINE': 'mysql',
+#        'HOST': 'database.example.com',
+#        'USER': 'yubistack_auth',
+#        'PASSWORD': 'secret_yubistack_password',
+#        'NAME': 'yubiauth',
+#    },
+#    'ykval': {
+#        'ENGINE': 'sqlite',
+#        'NAME': '/usr/local/yubistack/ykval.sqlite',
+#    },
+#    'ykksm': {
+#        'ENGINE': 'postgres',
+#        'HOST': 'database.example.com',
+#        'USER': 'yubistack_ksm',
+#        'PASSWORD': 'secret_yubistack_password',
+#        'NAME': 'ykksm',
+#    }
+# }
+DATABASES = {
+    'yubiauth': {
+        'ENGINE': 'mysql',
+        'HOST': 'database.example.com',
+        'USER': 'yubistack_auth',
+        'PASSWORD': 'secret_yubistack_password',
+        'NAME': 'yubiauth',
+    },
+    'ykval': {
+        'ENGINE': 'mysql',
+        'HOST': 'database.example.com',
+        'USER': 'yubistack_val',
+        'PASSWORD': 'secret_yubistack_password',
+        'NAME': 'ykval',
+    },
+    'ykksm': {
+        'ENGINE': 'mysql',
+        'HOST': 'database.example.com',
+        'USER': 'yubistack_ksm',
+        'PASSWORD': 'secret_yubistack_password',
+        'NAME': 'ykksm',
+    }
+}
+
+# USE_HSM tells if hardware security module should be used
+# to decrypt keys. Support for HSM is not implemented yet.
+USE_HSM = False
+# USE_NATIVE_YKVAL sets if native module should be used to
+# validate OTPs. If this is set to True, the YKVAL_SERVERS
+# will be ignored. If it's set to False, HTTP requests will
+# be sent to YKVAL_SERVERS.
+USE_NATIVE_YKVAL = True
+# USE_NATIVE_YKKSM sets if native module should be used to
+# decrypt OTPs. IF this is set to True the YKKSM_SERVERS
+# will be ignored. If it's set to False, HTTP requests will
+# be sent to YKKSM_SERVERS.
+USE_NATIVE_YKKSM = True
+
+# CRYPT_CONTEXT contains crypto settings for the user
+# password validation via passlib.
+CRYPT_CONTEXT = {
+    'schemes': ['yhsm_pbkdf2_sha1', 'sha256_crypt'] if USE_HSM
+    else ['sha256_crypt'],
+    'deprecated': ['sha256_crypt'] if USE_HSM else [],
+    'default': 'yhsm_pbkdf2_sha1' if USE_HSM else 'sha256_crypt',
+    'yhsm_pbkdf2_sha1__key_handle': 1,
+    'all__vary_rounds': 0.1,
+    'sha256_crypt__min_rounds': 80000,
+    'admin__sha256_crypt__min_rounds': 160000
+}
+
+# Validation Client ID and secret is unique per server
+# Other validation servers will use this secret to validate
+# responses from this server
+YKVAL_CLIENT_ID = 1
+YKVAL_CLIENT_SECRET = 'c2VjcmV0a2V5cw=='
+
+# List of validation servers (if USE_NATIVE_YKVAL = False)
+#YKVAL_SERVERS = ["http://127.0.0.1/wsapi/2.0/verify"]
+
+# List of decrypt servers (if USE_NATIVE_YKKSM = False)
+#YKKSM_SERVERS = ["http://127.0.0.1/wsapi/decrypt"]
+
+# List of other validation servers in a cluster
+# These servers will be kept synchronized with the validation data
+SYNC_SERVERS = [
+    "http://10.10.10.20:8080/wsapi/2.0/sync",
+    "http://10.10.10.30:8080/wsapi/2.0/sync",
+]
+# The percentage of servers required to confirm key validation
+# 100 means all others servers in the pool needs to validate every
+# request, 0 means only this server, and no remote servers.
+# You can do something like SYNC_LEVEL = 100 / len(SYNC_SERVERS)
+# to ensure at least one other server will validate.
+SYNC_LEVEL = 33
+# Pool of remote servers which are allowd to use this server for 
+# validation / synchronization. Normally this will contain the same
+# servers as SYNC_SERVERS, but separating it gives more flexibility.
+SYNC_POOL = ["10.10.10.20", "10.10.10.30"]
