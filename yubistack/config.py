@@ -13,7 +13,7 @@ import imp
 import os
 import logging
 
-SETTINGS_FILE = os.getenv('YUBISTACK_SETTINGS', '/etc/yubico/yubistack.conf')
+SETTINGS_FILE = os.getenv('YUBISTACK_SETTINGS', '/etc/yubistack.conf')
 DEFAULT_CRYPT_CONTEXT = {
     'schemes': ['sha256_crypt'],
     'deprecated': [],
