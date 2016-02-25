@@ -305,7 +305,11 @@ an already validated OTP')
         try:
             req = requests.get(url, timeout=timeout)
             if req.status_code == 200:
-                dqueue.put({'server': server, 'text': req.text})
+                try:
+                    resp_params = parse_sync_response(req.text)
+                    dqueue.put({'server': server, 'params': resp_params})
+                except ValueError as err:
+                    logger.error('Failed to parse response of %s: %s', server, err)
             else:
                 logger.warning('Recieved status code %s for %s', req.status_code, url)
         except Exception as err:
@@ -337,11 +341,7 @@ an already validated OTP')
         # Parse response
         valid_answers = 0
         for resp in responses:
-            try:
-                resp_params = parse_sync_response(resp['text'])
-            except ValueError as err:
-                logger.error('Failed to parse response of %s: %s', resp['server'], err)
-                continue
+            resp_params = resp['params']
             logger.debug('local DB contains %s', local_params)
             logger.debug('response contains %s', resp_params)
             logger.debug('OTP contains %s', otp_params)
