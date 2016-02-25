@@ -12,6 +12,7 @@ import re
 from Crypto.Random import atfork
 
 from .config import settings
+from .crypt import PrivateKey
 from .db import DBHandler
 from .utils import (
     aes128ecb_decrypt,
@@ -20,12 +21,6 @@ from .utils import (
 
 logger = logging.getLogger(__name__)
 OTP_REGEX = re.compile(r'^(?P<yk_id>[cbdefghijklnrtuv]{0,16})(?P<modhex>[cbdefghijklnrtuv]{32})$')
-
-try:
-    from .crypt import PrivateKey
-except ImportError:
-    PrivateKey = None
-    logger.exception('could not load crypto.PrivateKey')
 
 
 CRYPTER = None
@@ -36,6 +31,7 @@ if settings.get('YKKSM_KEYDIR') and PrivateKey:
 class YKKSMError(Exception):
     """ Errors returned by the application """
     pass
+
 
 class DBH(DBHandler):
     """
