@@ -20,7 +20,7 @@ def get_version():
 
 def get_long_description():
     """ Return the content of README """
-    with open('README', 'rb') as readmefile:
+    with open('README.rst', 'rb') as readmefile:
         return readmefile.read().decode('utf-8')
 
 setup(
