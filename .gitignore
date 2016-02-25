@@ -1,2 +1,4 @@
 __pycache__
+dist
+yubistack.egg-info
 *.pyc
