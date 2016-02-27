@@ -50,8 +50,11 @@ def parse(conf):
         _settings[conf_key] = getattr(conf, conf_key, default_value)
     return _settings
 
-user_settings = imp.load_source('user_settings', SETTINGS_FILE)
-settings = parse(user_settings)
+if os.path.isfile(SETTINGS_FILE):
+    user_settings = imp.load_source('user_settings', SETTINGS_FILE)
+    settings = parse(user_settings)
+else:
+    settings = dict(VALUES)
 
 loglevel = getattr(logging, settings['LOGLEVEL'], logging.INFO)
 logging.basicConfig(format='%(asctime)s %(levelname)s %(module)s %(funcName)s: %(message)s',
