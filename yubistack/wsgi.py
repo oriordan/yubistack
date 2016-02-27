@@ -143,7 +143,7 @@ def sync(environ, start_response):
             logger.info('Operation not permitted from IP %(REMOTE_ADDR)s', environ)
             logger.debug('Remote IP %s is not in allowed sync pool: %s',
                          environ['REMOTE_ADDR'], settings['SYNC_POOL'])
-            raise YKSyncError('ERROR Authorization failed for %(REMOTE_ADDR)s)' % environ)
+            raise YKSyncError('OPERATION_NOT_ALLOWED')
         sync_params = parse_querystring(environ['QUERY_STRING'])
         logger.info('Received: %s', sync_params)
         synclib = Sync()
