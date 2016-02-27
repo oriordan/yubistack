@@ -41,6 +41,7 @@ def parse_querystring(query_string):
     params = {}
     for key, val in parse_qs(query_string).items():
         if (
+                (val[0] == '0') or
                 (val[0].isdigit() and not val[0].startswith('0')) or
                 (val[0].startswith('-') and val[0][1:].isdigit())
             ):
