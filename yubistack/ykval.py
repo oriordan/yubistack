@@ -63,7 +63,7 @@ class DBH(DBHandler):
         return self._dictfetchone()
 
     def get_local_params(self, yk_publicname):
-        """ Lookup user based on the begining of OTP """
+        """ Get yubikey parameters from DB """
         query = """SELECT active,
                           modified,
                           yk_publicname,
@@ -75,7 +75,24 @@ class DBH(DBHandler):
                      FROM yubikeys
                     WHERE yk_publicname = %s"""
         self._execute(query, (yk_publicname,))
-        return self._dictfetchone()
+        local_params = self._dictfetchone()
+        if not local_params:
+            local_params = {
+                'active': 1,
+                'modified': -1,
+                'yk_publicname': yk_publicname,
+                'yk_counter': -1,
+                'yk_use': -1,
+                'yk_low': -1,
+                'yk_high': -1,
+                'nonce': '0000000000000000',
+                'created': current_ts()
+            }
+            # Key was missing in DB, adding it
+            self.add_new_identity(local_params)
+            logger.warning('Discovered new identity %s', yk_publicname)
+        logger.debug('Auth data: %s', local_params)
+        return local_params
 
     def add_new_identity(self, identity):
         """ Create new key identity """
@@ -241,7 +258,7 @@ class Sync(object):
     def sync_local(self, sync_params):
         """ Synchronize """
         self.check_sync_input(sync_params)
-        local_params = self.get_local_params(sync_params['yk_publicname'])
+        local_params = self.db.get_local_params(sync_params['yk_publicname'])
         if not local_params:
             logger.error('Invalid Yubikey: %(yk_publicname)s', sync_params)
             raise YKSyncError('BACKEND_ERROR')
@@ -493,31 +510,6 @@ class Verifyer(object):
         logger.debug('Decrypted OTP: %s', otp_info)
         return otp_info
 
-    def get_local_params(self, otp):
-        """ Get yubikey from DB """
-        yk_publicname = otp[:-TOKEN_LEN]
-        local_params = self.db.get_local_params(yk_publicname)
-        if not local_params:
-            local_params = {
-                'active': 1,
-                'modified': -1,
-                'yk_publicname': yk_publicname,
-                'yk_counter': -1,
-                'yk_use': -1,
-                'yk_low': -1,
-                'yk_high': -1,
-                'nonce': '0000000000000000',
-                'created': current_ts()
-            }
-            # Key was missing in DB, adding it
-            self.db.add_new_identity(local_params)
-            logger.warning('Discovered new identity %s', yk_publicname)
-        logger.debug('Auth data: %s', local_params)
-        if not local_params['active']:
-            logger.error('De-activated Yubikey: %s', yk_publicname)
-            raise YKValError('BAD_OTP')
-        return local_params
-
     def build_otp_params(self, params, otp_info):
         """ Build OTP params """
         return {
@@ -707,7 +699,10 @@ valid_answers=%s sl_success_rate=%s timeout=%s', self.sync_level, len(self.sync_
         #         check for replay
         #######################################
         # Get old parameters (counters) for the token
-        local_params = self.get_local_params(otp)
+        local_params = self.db.get_local_params(otp[:-TOKEN_LEN])
+        if not local_params['active']:
+            logger.error('De-activated Yubikey: %(yk_publicname)s', local_params)
+            raise YKValError('BAD_OTP')
         # Build the new parameters (counters) for the given OTP
         otp_params = self.build_otp_params(params, otp_info)
         # Validate OTP, check for replayed request or replayed OTP
