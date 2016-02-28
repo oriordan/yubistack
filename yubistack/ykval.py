@@ -241,7 +241,7 @@ class Sync(object):
     def sync_local(self, sync_params):
         """ Synchronize """
         self.check_sync_input(sync_params)
-        local_params = self.db.get_local_params(sync_params['yk_publicname'])
+        local_params = self.get_local_params(sync_params['yk_publicname'])
         if not local_params:
             logger.error('Invalid Yubikey: %(yk_publicname)s', sync_params)
             raise YKSyncError('BACKEND_ERROR')
@@ -266,24 +266,27 @@ class Sync(object):
                 # ykval-queue processes the sync request again.
                 logger.info('Sync request unnecessarily sent')
 
-            if sync_params['modified'] != local_params['modified'] \
-                and sync_params['nonce'] == local_params['nonce']:
+            if (
+                    sync_params['modified'] != local_params['modified'] and
+                    sync_params['nonce'] == local_params['nonce']
+                ):
                 delta_modified = sync_params['modified'] - local_params['modified']
                 if delta_modified < -1 or delta_modified > 1:
-                    logger.warning('We might have a replay attack. 2 events \
-at different times have generated the same counters. Time difference is %s sec',
+                    logger.warning('We might have a replay attack. 2 events '
+                                   'at different times have generated the same '
+                                   'counters. Time difference is %s sec',
                                    delta_modified)
 
             if sync_params['nonce'] != local_params['nonce']:
-                logger.warning('Remote server has received a request to validate \
-an already validated OTP')
+                logger.warning('Remote server has received a request to '
+                               'validate an already validated OTP')
 
         if not local_params['active']:
             # The remote server has accepted an OTP from a YubiKey which
             # we would not. We still needed to update our counters with
             # the counters from the OTP thought.
-            logger.warning('Received sync-request for de-activated Yubikey %(yk_publicname)s',
-                           sync_params)
+            logger.warning('Received sync-request for de-activated Yubikey '
+                           '%(yk_publicname)s', sync_params)
             raise YKSyncError('BAD_OTP')
         return local_params
 
@@ -412,7 +415,7 @@ class Verifyer(object):
             logger.error('Nonce is missing and protocol version >= 2.0')
             raise YKValError('MISSING_PARAMETER')
         if params['nonce'] and not re.match(r'^[A-Za-z0-9]+$', params['nonce']):
-            logger.error('NONCE is provided but not correct')
+            logger.error('Nonce is provided but not correct')
             raise YKValError('MISSING_PARAMETER')
         if params['nonce'] and not 16 <= len(params['nonce']) <= 40:
             logger.error('Nonce too short or too long')
@@ -432,8 +435,16 @@ class Verifyer(object):
     def get_client_apikey(self, client_id):
         """
         Get Client info from DB
-        Raises exception if client doesn't exist
-        Returns b64decoded client secret (apikey)
+
+        Args:
+            client_id: Integer ID number of the client.
+                       Corresponding API key will be retrieved from DB
+
+        Returns:
+            b64decoded client secret (apikey)
+
+        Raises:
+            YKValError('NO_SUCH_CLIENT') if client doesn't exist
         """
         if not client_id:
             return ''.encode()
@@ -447,6 +458,17 @@ class Verifyer(object):
     def check_client_signature(self, apikey, params):
         """
         Check client signature if 'h' parameter was provided for request
+
+        Args:
+            apikey: Client's API key (from DB)
+            params: Request parameter
+
+        Returns:
+            None
+
+        Raises:
+            YKValError('BAD_SIGNATURE') if request was not encoded with
+            the given apikey
         """
         if params['signature']:
             recieved_data = params.copy()
@@ -454,10 +476,11 @@ class Verifyer(object):
             recieved_data.pop('proto_ver')
             new_signature = sign(recieved_data, apikey)
             if params['signature'] != new_signature:
-                logger.error('Client hmac=%s, server hmac=%s', params['signature'], new_signature)
+                logger.error('Client hmac=%s, server hmac=%s',
+                             params['signature'], new_signature)
                 raise YKValError('BAD_SIGNATURE')
 
-    def decode_otp(self, otp, client_id=None):
+    def decode_otp(self, otp):
         """ Decode OTP from input """
         try:
             otp_info = decrypt_otp(otp, urls=settings['YKKSM_SERVERS'],
@@ -595,14 +618,58 @@ valid_answers=%s sl_success_rate=%s timeout=%s', self.sync_level, len(self.sync_
     def verify(self, otp, client_id=None, nonce=None, signature=None,
                timestamp=0, timeout=None, sync_level=None, proto_ver=2.0):
         """
-        Verify OTP:
+        Yubico OTP Validation Protocol V2.0 Implementation
+
+        Args:
+            otp: The OTP from the YubiKey
+            client_id: Specifies the requestor so that the end-point
+                       can retrieve correct shared secret for
+                       signing the response.
+            nonce: A 16 to 40 character long string with random unique data
+            signature: The optional HMAC-SHA1 signature for the request
+            timestamp: Timestamp=1 requests timestamp and session
+                       counter information in the response
+            timeout: Number of seconds to wait for sync responses;
+                     if absent, let the server decide
+            sync_level: A value 0 to 100 indicating percentage of
+                        syncing required by client, or strings "fast" or
+                        "secure" to use server-configured values;
+                        if absent, let the server decide
+            proto_ver: Version of validation protocol (min 2.0)
+
+        Returns:
+            A signed response with status=OK if the OTP is valid
+
+        Raises:
+            YKValError('BAD_OTP'): The OTP is invalid format
+            YKValError('REPLAYED_OTP'): The OTP has already been seen by the service
+            YKValError('BAD_SIGNATURE'): The HMAC signature verification failed
+            YKValError('MISSING_PARAMETER'): The request lacks a parameter
+            YKValError('NO_SUCH_CLIENT'): The request id does not exist
+            YKValError('OPERATION_NOT_ALLOWED'): The request id is not allowed to verify OTPs
+            YKValError('BACKEND_ERROR'): Unexpected error in the server
+            YKValError('NOT_ENOUGH_ANSWERS'): Server could not get requested number
+                                              of syncs during before timeout
+            YKValError('REPLAYED_REQUEST'): Server has seen the OTP/Nonce combination before
+
+
+        Verify OTP process:
             1. sanitize input parameters
             2. verify the requesting client (id and signature must match)
             3. decrypt OTP (YKKSM)
             4. compare old OTP counters with the given OTP counters and check for replay
             5. replicate new OTP counters to remote servers and check for replay on other servers
             6. check for phishing: OTP has to be used within a timeframe otherwise mark as expired
+            7. prepare response: Sign the response with the right client key
         """
+
+        ###################################
+        # STEP 1: sanitize input parameters
+        ###################################
+        if proto_ver < 2.0:
+            logger.error('Protocol version %f (<2.0) is not supported.',
+                         proto_ver)
+            raise YKValError('BACKEND_ERROR')
         self.timeout = timeout if timeout else settings['SYNC_TIMEOUT']
         self.sync_level = sync_level if sync_level else settings['SYNC_LEVEL']
         server_nonce = generate_nonce()
@@ -616,41 +683,54 @@ valid_answers=%s sl_success_rate=%s timeout=%s', self.sync_level, len(self.sync_
             'sync_level': self.sync_level,
             'proto_ver': proto_ver,
         }
-        extra_params = {'otp': otp}
-        if proto_ver >= 2.0:
-            extra_params['nonce'] = nonce
-
+        extra_params = {
+            'otp': otp,
+            'nonce': params['nonce']
+        }
         # Check sanity of parameters
         self.check_parameters(params)
-        # Verify client_id, get client data from DB and decode API Key associated with client
+
+        ######################################
+        # STEP 2: verify the requesting client
+        ######################################
         apikey = self.get_client_apikey(client_id)
-        # Verify request signature.
         self.check_client_signature(apikey, params)
 
-        # We need to add necessary parameters not available at
-        # earlier protocols after signature is computed.
-        if proto_ver < 2.0:
-            # We need to create a nonce manually here
-            nonce = generate_nonce()
-            logger.info('protocol version below 2.0. Created nonce %s', nonce)
+        #####################
+        # STEP 3: decrypt OTP
+        #####################
+        otp_info = self.decode_otp(otp)
 
-        # Decrypt OTP
-        otp_info = self.decode_otp(otp, client_id)
+        #######################################
+        # STEP 4: compare old OTP counters with
+        #         the given OTP counters and
+        #         check for replay
+        #######################################
         # Get old parameters (counters) for the token
         local_params = self.get_local_params(otp)
         # Build the new parameters (counters) for the given OTP
         otp_params = self.build_otp_params(params, otp_info)
         # Validate OTP, check for replayed request or replayed OTP
         self.validate_otp(otp_params, local_params)
-        # Sync keys with the other Yubikey Validation servers
+
+        #####################################
+        # STEP 5: replicate new OTP counters
+        #         to remote servers and check
+        #         for replay on other servers
+        #####################################
         sync_level_success_rate = self.replicate(otp_params, local_params, server_nonce)
-        # Run a phising test
+
+        #######################################
+        # STEP 6: check for phishing, OTP has
+        #         to be used within a timeframe
+        #         otherwise mark as expired
+        #######################################
         self.phishing_test(otp_params, local_params)
 
-        # Fill up with more respone parameters
-        if proto_ver >= 2.0:
-            extra_params['sl'] = sync_level_success_rate
-
+        ##########################
+        # STEP 7: Prepare response
+        ##########################
+        extra_params['sl'] = sync_level_success_rate
         if timestamp == 1:
             extra_params['timestamp'] = (otp_info['yk_high'] << 16) + otp_info['yk_low']
             extra_params['sessioncounter'] = otp_info['yk_counter']
