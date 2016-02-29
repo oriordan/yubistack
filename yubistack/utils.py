@@ -147,7 +147,7 @@ def sign(data, apikey):
     signature = hmac.new(apikey, query_string.encode(), hashlib.sha1).digest()
     # Base 64 encode the resulting value according to RFC 4648
     signature = base64.b64encode(signature).decode()
-    logger.debug('SIGN: %s H=%s', query_string, signature)
+    logger.debug('Signed data: %s (H=%s)', query_string, signature)
     return signature
 
 def decrypt_otp(otp, urls=None, decryptor=None):
@@ -248,8 +248,8 @@ def parse_sync_response(sync_response):
             raise ValueError('Cannot parse "%s". Response from sync server:\n%s' %
                              (name, sync_response))
         else:
-            # Convert numbers to int
-            params[name] = int(params[name]) if params[name].isdigit() else params[name]
+            if params[name].isdigit() or params[name] == '-1':
+                params[name] = int(params[name])
     return params
 
 def wsgi_response(resp, start_response, apikey=b'', extra=None, status=200):
