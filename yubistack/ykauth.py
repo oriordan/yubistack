@@ -1,15 +1,28 @@
 """
-yubistack.models
+yubistack.ykauth
 ~~~~~~~~~~~~~~~~
 
-Python Yubikey Stack - Authentication & Authorization
+Python Yubikey Stack - Authentication module
 """
 
+import base64
 import logging
-from passlib.context import CryptContext
+import time
+import urllib
 
-from .config import settings
+from passlib.context import CryptContext
+import requests
+
+from .config import (
+    settings,
+    TOKEN_LEN,
+)
 from .db import DBHandler
+from .utils import (
+    sign,
+    generate_nonce,
+)
+from .ykval import YKValError
 
 logger = logging.getLogger(__name__)
 
@@ -41,13 +54,51 @@ class DBH(DBHandler):
                           yubikeys.id AS yubikeys_id,
                           yubikeys.prefix AS yubikeys_prefix,
                           yubikeys.enabled AS yubikeys_enabled
-                     FROM yubikeys, user_yubikeys
+                     FROM yubikeys
+               INNER JOIN user_yubikeys
+                       ON user_yubikeys.yubikey_id = yubikeys.id
                     WHERE user_yubikeys.user_id = %s
-                      AND yubikeys.prefix = %s
-                      AND yubikeys.id = user_yubikeys.yubikey_id
-                 ORDER BY yubikeys.prefix"""
+                      AND yubikeys.prefix = %s"""
         self._execute(query, (user_id, token_id))
         return self._dictfetchone()
+
+
+class VerificationClient(object):
+    """ Verification Client """
+    def __init__(self, urls, client_id=None, apikey=None):
+        self.urls = urls
+        self.client_id = client_id
+        self.apikey = base64.b64decode(apikey)
+
+    def generate_query(self, otp, nonce, timestamp=False, timeout=None,
+                       sync_level=None):
+        """ Generate query """
+        data = [('id', self.client_id),
+                ('otp', otp),
+                ('nonce', nonce)]
+        if timestamp:
+            data.append(('timestamp', '1'))
+
+        if sync_level is not None:
+            data.append(('sl', sl))
+
+        if timeout:
+            data.append(('timeout', timeout))
+
+        query_string = urllib.parse.urlencode(data)
+        if self.apikey:
+            signature = sign(dict(data), self.apikey)
+            query_string += '&h=%s' % (signature.replace('+', '%B'))
+        return query_string
+
+    def verify(self, otp, timestamp=False, sl=None, timeout=None,
+               return_response=False):
+        """ Make a HTTP call to the Yubikey Verification servers """
+        nonce = generate_nonce()
+        query = self.generate_query(otp, nonce, timestamp=timestamp,
+                                    timeout=timeout, sync_level=sl)
+        req = requests.get(self.urls[0] + '?' + query)
+        print(req.text)
 
 class Client(object):
     """ Authentication Client """
@@ -56,8 +107,8 @@ class Client(object):
         self.pwd_context = CryptContext(**settings['CRYPT_CONTEXT'])
         if settings['USE_NATIVE_YKVAL']:
             # Native verify
-            from .ykval import Verifyer
-            self.ykval_client = Verifyer()
+            from .ykval import Validator
+            self.ykval_client = Validator()
         else:
             # Using yubico_client to verify against remote server
             from yubico_client import Yubico
@@ -65,24 +116,48 @@ class Client(object):
                                        settings['YKVAL_CLIENT_SECRET'],
                                        api_urls=settings['YKVAL_SERVERS'])
 
-    def _get_token_info(self, username, token_id):
+    def _get_user_info(self, username):
         """
-        1. Check user
-        2. Check token
+        Get user from DB
+
+        Args:
+            username
+
+        Returns:
+            dictionary of user data
+
+        Raises:
+            AuthFail if user does not exist
         """
         user = self.db.get_user(username)
         if not user:
             raise YKAuthError("No such user: %s" % username)
         logger.debug('Found user: %s', user)
+        return user
+
+    def _check_token(self, user, token_id):
+        """
+        Check Token association with user
+
+        Args:
+            user: User data dict as recieved from _get_user_info()
+            token_id: Token prefix (aka. publicname)
+
+        Returns:
+            None
+
+        Raises:
+            AuthFail if token is not associated with the user
+            AithFail if token is disabled
+        """
         token = self.db.get_token(user['users_id'], token_id)
         if not token:
-            logger.error('Token %s is not associated with %s', token_id, username)
-            raise YKAuthError("Token %s is not associated with %s" % (token_id, username))
+            logger.error('Token %s is not associated with %s', token_id, user['users_name'])
+            raise YKAuthError('Token %s is not associated with %s' % (token_id, user['users_name']))
         logger.debug('Found token: %s', token)
         if not token.get('yubikeys_enabled'):
-            logger.error('Token %s is disabled for %s', token_id, username)
-            raise YKAuthError("Token is disabled for %s" % username)
-        return user
+            logger.error('Token %s is disabled for %s', token_id, user['users_name'])
+            raise YKAuthError('Token is disabled for %s' % user['users_name'])
 
     def _validate_password(self, user, password):
         """
@@ -90,8 +165,8 @@ class Client(object):
         """
         valid, new_hash = self.pwd_context.verify_and_update(str(password), user['users_auth'])
         if not valid:
-            logger.error('Invalid password for %(users_name)s', user)
-            raise YKAuthError("Invalid password for %(users_name)s" % user)
+            logger.error('%(users_name)s: Invalid password', user)
+            raise YKAuthError('Invalid password')
         if new_hash:
             # TODO: update user's hash with new_hash
             logger.warning("User %(users_name)s's hash needs update", user)
@@ -111,12 +186,45 @@ class Client(object):
 
     def authenticate(self, username, password, otp):
         """
-        1. Check if token is enabled
-        2. Check if token is associated with the user
-        3. Validate users password
-        4. Validate OTP (YKVal)
+        Yubistack user authentication
+
+        Args:
+            username: Username of the user
+            password: Password/PIN of the user
+            otp: Yubikey one time password
+
+        Returns:
+            dict of authentication data
+
+        Authentication process:
+            1. Check if token is enabled
+            2. Check if token is associated with the user & enabled
+            3. Validate users password
+            4. Validate OTP (YKVal)
         """
-        token_id = otp[:-32]
-        user = self._get_token_info(username, token_id)
-        self._validate_password(user, password)
-        return self._validate_otp(otp)
+        auth_start = time.time()
+        token_id = otp[:-TOKEN_LEN]
+        try:
+            # STEP 1: Check if token is enabled
+            user = self._get_user_info(username)
+            # STEP 2: Check if token is associated with the user & enabled
+            self._check_token(user, token_id)
+            # STEP 3: Validate users password
+            self._validate_password(user, password)
+            # STEP 4: Validate OTP
+            self.ykval_client.verify(otp)
+            status_code = 200
+            message = 'Successful authentication'
+            logger.info('%s: %s', username, message)
+        except (YKAuthError, YKValError) as err:
+            status_code = 400
+            message = 'Failed authentication: %s' % err
+            logger.warning('%s: %s', username, message)
+        except Exception as err:
+            status_code = 500
+            message = 'Backend error: %s' % err
+            logger.exception('%s: %s', username, message)
+        finally:
+            return {'status_code': status_code, 'username': username,
+                    'token_id': token_id, 'message': message,
+                    'latency': round(time.time() - auth_start, 3)}
