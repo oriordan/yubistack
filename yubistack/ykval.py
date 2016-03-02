@@ -18,7 +18,14 @@ import time
 
 import requests
 
-from .config import settings
+from .config import (
+    settings,
+    TS_SEC,
+    TS_REL_TOLERANCE,
+    TS_ABS_TOLERANCE,
+    TOKEN_LEN,
+    OTP_MAX_LEN,
+)
 from .db import DBHandler
 from .utils import (
     generate_nonce,
@@ -27,18 +34,10 @@ from .utils import (
     counters_eq,
     counters_gt,
     counters_gte,
-    current_ts,
     parse_sync_response,
 )
 
 logger = logging.getLogger(__name__)
-
-# Constants from original yubikey-val implementation
-TS_SEC = 0.128 # 1/8
-TS_REL_TOLERANCE = 0.3
-TS_ABS_TOLERANCE = 20
-TOKEN_LEN = 32
-OTP_MAX_LEN = 48 # TOKEN_LEN plus public identity of 0..16
 
 class YKValError(Exception):
     """ Errors returned by the application """
@@ -86,7 +85,7 @@ class DBH(DBHandler):
                 'yk_low': -1,
                 'yk_high': -1,
                 'nonce': '0000000000000000',
-                'created': current_ts()
+                'created': int(time.time())
             }
             # Key was missing in DB, adding it
             self.add_new_identity(local_params)
@@ -207,7 +206,7 @@ class DBH(DBHandler):
                         info
                     ) VALUES (%s, %s, %s, %s, %s, %s)"""
         try:
-            self._execute(query, (current_ts(), otp_params['modified'],
+            self._execute(query, (int(time.time()), otp_params['modified'],
                                   otp_params['otp'], server, server_nonce, info))
             self._db.commit()
         except Exception as err:
@@ -227,6 +226,8 @@ class DBH(DBHandler):
         self._execute(query, params)
         return self.cursor.fetchall()
 
+REQUIRED_PARAMS = ['modified', 'otp', 'nonce', 'yk_publicname',
+                   'yk_counter', 'yk_use', 'yk_high', 'yk_low']
 class Sync(object):
     """ Sync object to handle cross synchronization requests """
     def __init__(self, db=None):
@@ -235,8 +236,6 @@ class Sync(object):
 
     def check_sync_input(self, sync_params):
         """ Check for all required parameters """
-        REQUIRED_PARAMS = ['modified', 'otp', 'nonce', 'yk_publicname',
-                           'yk_counter', 'yk_use', 'yk_high', 'yk_low']
         for req_param in REQUIRED_PARAMS:
             if req_param not in sync_params:
                 logger.error("Received request with missing '%s' parameter", req_param)
@@ -398,7 +397,7 @@ nonce differs.')
         self.db.null_queue(server_nonce)
         return {'answers': answers, 'valid_answers': valid_answers}
 
-class Verifyer(object):
+class Validator(object):
     """ Yubikey OTP validator """
     def __init__(self):
         self.db = DBH(db='ykval')
@@ -472,31 +471,6 @@ class Verifyer(object):
             raise YKValError('NO_SUCH_CLIENT')
         return base64.b64decode(client_data['secret'])
 
-    def check_client_signature(self, apikey, params):
-        """
-        Check client signature if 'h' parameter was provided for request
-
-        Args:
-            apikey: Client's API key (from DB)
-            params: Request parameter
-
-        Returns:
-            None
-
-        Raises:
-            YKValError('BAD_SIGNATURE') if request was not encoded with
-            the given apikey
-        """
-        if params['signature']:
-            recieved_data = params.copy()
-            recieved_data.pop('signature')
-            recieved_data.pop('proto_ver')
-            new_signature = sign(recieved_data, apikey)
-            if params['signature'] != new_signature:
-                logger.error('Client hmac=%s, server hmac=%s',
-                             params['signature'], new_signature)
-                raise YKValError('BAD_SIGNATURE')
-
     def decode_otp(self, otp):
         """ Decode OTP from input """
         try:
@@ -513,7 +487,7 @@ class Verifyer(object):
     def build_otp_params(self, params, otp_info):
         """ Build OTP params """
         return {
-            'modified': current_ts(),
+            'modified': int(time.time()),
             'otp': params['otp'],
             'nonce': params['nonce'],
             'yk_publicname': params['otp'][:-TOKEN_LEN],
@@ -579,36 +553,39 @@ valid_answers=%s sl_success_rate=%s timeout=%s', self.sync_level, len(self.sync_
 
     def phishing_test(self, otp_params, local_params):
         """ Run a timing phishing test """
-        # Recreate parameters to make phising test work out
-        if otp_params['yk_counter'] == local_params['yk_counter'] \
-            and otp_params['yk_use'] > local_params['yk_use']:
-            new_ts = (otp_params['yk_high'] << 16) + otp_params['yk_low']
-            old_ts = (local_params['yk_high'] << 16) + local_params['yk_low']
-            ts_diff = new_ts - old_ts
-            ts_delta = ts_diff * TS_SEC
+        # Only check token timestamps if it was not plugged out
+        if otp_params['yk_counter'] != local_params['yk_counter']:
+            return
+        new_ts = (otp_params['yk_high'] << 16) + otp_params['yk_low']
+        old_ts = (local_params['yk_high'] << 16) + local_params['yk_low']
+        ts_delta = (new_ts - old_ts) * TS_SEC
 
-            # Check real time
-            last_time = local_params['modified']
-            now = datetime.utcnow()
-            elapsed = int(now.strftime('%s')) - last_time
-            deviation = abs(elapsed - ts_delta)
+        # Check real time
+        last_time = local_params['modified']
+        now = int(time.time())
+        elapsed = now - last_time
+        deviation = abs(elapsed - ts_delta)
 
-            # Time delta server might verify multiple OTPS in a row. In such case validation server
-            # doesn't have time to tick a whole second and we need to avoid division by zero.
-            if elapsed:
-                percent = deviation / elapsed
-            else:
-                percent = 1
-            logger.info('Timestamp seen=%s this=%s delta=%s secs=%s accessed=%s (%s) '
-                        'now=%s (%s) elapsed=%s deviation=%s secs or %s%%', old_ts, new_ts,
-                        ts_delta, ts_diff, last_time, datetime.utcfromtimestamp(last_time),
-                        int(now.strftime('%s')), now, elapsed, deviation, percent)
-            if deviation > TS_ABS_TOLERANCE and percent > TS_REL_TOLERANCE:
-                logger.warning('OTP failed phishing test')
-                raise YKValError('DELAYED_OTP')
+        # Time delta server might verify multiple OTPs in a row. In such case validation server
+        # doesn't have time to tick a whole second and we need to avoid division by zero.
+        if elapsed:
+            percent = deviation / elapsed
+        else:
+            percent = 1
+        if deviation > TS_ABS_TOLERANCE and percent > TS_REL_TOLERANCE:
+            logger.error('%s: OTP Expired:\n\t' % otp_params['otp'][:-TOKEN_LEN] +
+                         'TOKEN TS OLD: %s\n\t' % datetime.utcfromtimestamp(old_ts) +
+                         'TOKEN TS NEW: %s\n\t' % datetime.utcfromtimestamp(new_ts) +
+                         'TOKEN TS DIFF: %s (sec)\n\t' % ts_delta +
+                         'ACCESS TS OLD: %s\n\t' % datetime.utcfromtimestamp(last_time) +
+                         'ACCESS TS NEW: %s\n\t' % datetime.utcfromtimestamp(now) +
+                         'ACCESS TS DIFF: %s (sec)\n\t' % elapsed +
+                         'DEVIATION: %s (sec) or %s%%' % (deviation, percent))
+            logger.warning('OTP failed phishing test')
+            raise YKValError('DELAYED_OTP')
 
-    def verify(self, otp, client_id=None, nonce=None, signature=None,
-               timestamp=0, timeout=None, sync_level=None, proto_ver=2.0):
+    def verify(self, otp, client_id=None, nonce=None, timestamp=0,
+               timeout=None, sync_level=None, proto_ver=2.0):
         """
         Yubico OTP Validation Protocol V2.0 Implementation
 
@@ -618,7 +595,6 @@ valid_answers=%s sl_success_rate=%s timeout=%s', self.sync_level, len(self.sync_
                        can retrieve correct shared secret for
                        signing the response.
             nonce: A 16 to 40 character long string with random unique data
-            signature: The optional HMAC-SHA1 signature for the request
             timestamp: Timestamp=1 requests timestamp and session
                        counter information in the response
             timeout: Number of seconds to wait for sync responses;
@@ -635,7 +611,6 @@ valid_answers=%s sl_success_rate=%s timeout=%s', self.sync_level, len(self.sync_
         Raises:
             YKValError('BAD_OTP'): The OTP is invalid format
             YKValError('REPLAYED_OTP'): The OTP has already been seen by the service
-            YKValError('BAD_SIGNATURE'): The HMAC signature verification failed
             YKValError('MISSING_PARAMETER'): The request lacks a parameter
             YKValError('NO_SUCH_CLIENT'): The request id does not exist
             YKValError('OPERATION_NOT_ALLOWED'): The request id is not allowed to verify OTPs
@@ -669,7 +644,6 @@ valid_answers=%s sl_success_rate=%s timeout=%s', self.sync_level, len(self.sync_
             'client_id': client_id,
             'otp': otp,
             'nonce': nonce if nonce else server_nonce,
-            'signature': signature,
             'timestamp': timestamp,
             'timeout': self.timeout,
             'sync_level': self.sync_level,
@@ -686,7 +660,6 @@ valid_answers=%s sl_success_rate=%s timeout=%s', self.sync_level, len(self.sync_
         # STEP 2: verify the requesting client
         ######################################
         apikey = self.get_client_apikey(client_id)
-        self.check_client_signature(apikey, params)
 
         #####################
         # STEP 3: decrypt OTP
@@ -735,6 +708,4 @@ valid_answers=%s sl_success_rate=%s timeout=%s', self.sync_level, len(self.sync_
             'time': datetime.utcnow().isoformat().replace('.', 'Z')[:-2]
         }
         response.update(extra_params)
-        signature = sign(response, apikey)
-        response['signature'] = signature
         return response
