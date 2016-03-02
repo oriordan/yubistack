@@ -161,12 +161,13 @@ def decrypt_otp(otp, urls=None, decryptor=None):
     elif urls:
         # TODO: Support for async req for multiple servers
         for url in urls:
-            req = requests.get(url, params={'otp': otp})
+            req = requests.get(url, params={'otp': otp}, headers={'Accept': 'application/json'})
             logger.debug('YK-KSM response: %s (status_code: %s)', req.text, req.status_code)
+            if req.headers['Content-Type'] == 'application/json' and req.status_code == 200:
+                return dict([(k, int(v, 16)) for k, v in req.json().items()])
             if req.text.startswith('OK'):
-                data = req.text.split()[1:]
                 resp = {}
-                for i in data:
+                for i in req.text.split()[1:]:
                     key, val = i.split('=')
                     resp[key] = int(val, 16)
                 return resp
@@ -273,17 +274,6 @@ def wsgi_response(resp, start_response, apikey=b'', extra=None, status=200):
     logger.debug('Response: %s', response)
     start_response('%d OK' % status, [('Content-Type', 'text/plain')])
     return [response.encode()]
-
-def current_ts():
-    """
-    Return current timestamp with second precision
-    >>> now = current_ts()
-    >>> isinstance(now, int)
-    True
-    >>> now > 1428791250
-    True
-    """
-    return int(datetime.utcnow().strftime('%s'))
 
 if __name__ == '__main__':
     import doctest
