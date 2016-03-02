@@ -6,22 +6,34 @@ WSGI wrappers around the yubistack functions
 to support backward compatibility.
 """
 
+import json
 import logging
 import re
 
-from yubistack.config import settings
-from yubistack.utils import parse_querystring, wsgi_response
-from yubistack.ykauth import YKAuthError, Client
-from yubistack.ykksm import YKKSMError, Decryptor
-from yubistack.ykval import (
+from .config import settings
+from .utils import (
+    parse_querystring,
+    wsgi_response,
+    sign,
+)
+from .ykauth import YKAuthError, Client
+from .ykksm import YKKSMError, Decryptor
+from .ykval import (
     YKSyncError,
     YKValError,
     Sync,
-    Verifyer,
+    Validator,
 )
 
 logger = logging.getLogger(__name__)
 
+HTTP_STATUS_CODES = {
+    200: '200 OK',
+    400: '400 Bad Request',
+    401: '401 Unauthorized',
+    404: '404 Not Found',
+    500: '500 Internal Server Error',
+}
 URI_REGEX = re.compile(r"""
     ^/?                     # Leading slash might not be present
     (                       # Intersection: yubiauth and yubikey-val + yubikey-ksm differences
@@ -41,12 +53,16 @@ URI_REGEX = re.compile(r"""
     /?                      # Trailing clash might not be present
 """, re.VERBOSE)
 
+PERSISTENT_OBJECTS = {}
+
+REQUIRED_AUTH_PARAMS = ['username', 'password', 'otp']
 def authenticate(environ, start_response):
     """
     Handle authentications
     """
-    REQUIRED_PARAMS = ['username', 'password', 'otp']
-    username = '?'
+    if 'client' not in PERSISTENT_OBJECTS:
+        PERSISTENT_OBJECTS['client'] = Client()
+    client = PERSISTENT_OBJECTS['client']
     try:
         # Parse POST request
         try:
@@ -55,80 +71,95 @@ def authenticate(environ, start_response):
             request_body_size = 0
         request_body = environ['wsgi.input'].read(request_body_size)
         params = parse_querystring(request_body.decode())
+        _format = 'text'
+        if params.get('format') == 'json' or environ['HTTP_ACCEPT'] == 'application/json':
+            _format = 'json'
         username = params.get('username', '?')
         _params = params.copy()
         _params['password'] = '********'
         logger.debug('%s: PROCESSED QUERYSTRING: %s', username, _params)
-        for req_param in REQUIRED_PARAMS:
+        for req_param in REQUIRED_AUTH_PARAMS:
             if req_param not in params:
                 raise YKAuthError("Missing parameter: '%s'" % req_param)
-        client = Client()
         output = client.authenticate(params['username'], params['password'], params['otp'])
-    except YKAuthError as err:
-        logger.exception('%s: Authentication error: %s', username, err)
-        output = False
     except Exception as err:
-        logger.exception('%s: Backend error: %s', username, err)
-        output = None
+        output = {'status_code': 500, 'username': username,
+                  'message': 'Backend error: %s' % err}
         raise
-    else:
-        logger.info('%s: Authenticated successful', username)
     finally:
-        if output == True:
-            resp = (200, 'true')
-        elif output == False:
-            resp = (400, 'false')
-        else:
-            resp = (500, 'false')
-        start_response('%s OK' % resp[0], [('Content-Type', 'text/plain')])
-        return [resp[1].encode()]
+        content_type = 'application/json' if _format == 'json' else 'text/plain'
+        start_response(HTTP_STATUS_CODES[output['status_code']],
+                       [('Content-Type', content_type)])
+        output = json.dumps(output if _format == 'json' else (output['status_code'] == 200))
+        return [output.encode()]
 
 def decrypt(environ, start_response):
     """
     Handle OTP decryptions
     """
+    _format = 'text'
     try:
         params = parse_querystring(environ['QUERY_STRING'])
+        if params.get('format') == 'json' or environ['HTTP_ACCEPT'] == 'application/json':
+            _format = 'json'
         logger.debug('PROCESSED QUERYSTRING: %s', params)
         decryptor = Decryptor()
         output = decryptor.decrypt(params.get('otp'))
-        output = 'OK counter=%(counter)s low=%(low)s high=%(high)s use=%(use)s\n' % output
+        if _format != 'json':
+            output = 'OK counter=%(counter)s low=%(low)s high=%(high)s use=%(use)s\n' % output
+        status_code = 200
     except YKKSMError as err:
         logger.exception('Decryption error: %s', err)
         output = '%s\n' % err
+        status_code = 400
     except Exception as err:
         logger.exception('Backend error: %s', err)
         output = 'ERR Backend failure\n'
+        status_code = 500
     finally:
-        start_response('200 OK', [('Content-Type', 'text/plain')])
+        content_type = 'application/json' if _format == 'json' else 'text/plain'
+        if _format == 'json':
+            if isinstance(output, str):
+                output = {'status': output.rstrip()}
+            output = json.dumps(output)
+        start_response(HTTP_STATUS_CODES[status_code], [('Content-Type', content_type)])
         return [output.encode()]
 
+PARAM_MAP = {
+    'id': 'client_id',
+    'sl': 'sync_level',
+}
 def verify(environ, start_response):
     """
     Handle OTP Validation
     """
     apikey = ''.encode()
-    username = '?'
     try:
         params = parse_querystring(environ['QUERY_STRING'])
-        username = params.get('username', '?')
-        logger.debug('%s: PROCESSED QUERYSTRING: %s', username, params)
-        verifyer = Verifyer()
-        kwargs = params.copy()
-        if 'id' in kwargs:
-            kwargs.pop('id')
-        if 'otp' in kwargs:
-            kwargs.pop('otp')
-        apikey = verifyer.get_client_apikey(params.get('id'))
-        output = verifyer.verify(params.get('id'), params.get('otp'), **kwargs)
+        public_id = params.get('otp', '?' * 12)[:12]
+        logger.debug('%s: PROCESSED QUERYSTRING: %s', public_id, params)
+        validator = Validator()
+        apikey = validator.get_client_apikey(params.get('id'))
+        client_signature = params.pop('h')
+        server_signature = sign(params, apikey)
+        if client_signature != server_signature:
+            logger.error('Client hmac=%s != Server hmac=%s',
+                         client_signature, server_signature)
+            raise YKValError('BAD_SIGNATURE')
+        for old_key, new_key in PARAM_MAP.items():
+            if old_key in params:
+                params[new_key] = params[old_key]
+                params.pop(old_key)
+        extra = validator.verify(**params)
+        output = 'OK'
     except YKValError as err:
-        logger.exception('%s: Validation error: %s', username, err)
+        logger.exception('%s: Validation error: %s', public_id, err)
         output = '%s' % err
     except Exception as err:
-        logger.exception('%s: Backend error: %s', username, err)
+        logger.exception('%s: Backend error: %s', public_id, err)
         output = 'BACKEND_ERROR'
     finally:
-        logger.info('%s: Verified', username)
+        logger.info('%s: Verified', public_id)
         return wsgi_response(output, start_response, apikey=apikey, extra=None)
 
 def sync(environ, start_response):
@@ -183,7 +214,7 @@ def resync(environ, start_response):
         output = ''
         status_code = 500
     finally:
-        start_response('%d OK' % status_code, [('Content-Type', 'text/plain')])
+        start_response(HTTP_STATUS_CODES[status_code], [('Content-Type', 'text/plain')])
         return [output.encode()]
 
 def router(environ, start_response):
@@ -191,7 +222,7 @@ def router(environ, start_response):
     path = environ.get('PATH_INFO', '')
     match = re.match(URI_REGEX, path)
     if not match or not match.groupdict()['resource']:
-        start_response('500 Error', [('Content-Type', 'text/plain')])
+        start_response(HTTP_STATUS_CODES[404], [('Content-Type', 'text/plain')])
         return ['Invalid URI'.encode()]
     func = globals()[match.groupdict()['resource']]
     return func(environ, start_response)
