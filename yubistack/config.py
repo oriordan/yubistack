@@ -13,6 +13,13 @@ import imp
 import os
 import logging
 
+# CONSTANTS
+TS_SEC = 0.128 # 8Hz timer of the HW token
+TS_REL_TOLERANCE = 0.3
+TS_ABS_TOLERANCE = 20 # Tokens will expire after ~20 sec
+TOKEN_LEN = 32 # Lengh of Yubikey OTP tokens
+OTP_MAX_LEN = 48 # TOKEN_LEN plus public identity of 0..16
+
 SETTINGS_FILE = os.getenv('YUBISTACK_SETTINGS', '/etc/yubistack.conf')
 DEFAULT_CRYPT_CONTEXT = {
     'schemes': ['sha256_crypt'],
