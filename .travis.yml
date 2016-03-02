@@ -9,5 +9,6 @@ env:
   - DB=pgsql
   - DB=sqlite
 install: pip install passlib pycrypto requests mysqlclient psycopg2
+
 script:
   - travis/selftest.sh
