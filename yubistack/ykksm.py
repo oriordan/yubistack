@@ -45,7 +45,7 @@ class DBH(DBHandler):
         query = """SELECT aeskey,
                           internalname
                      FROM yubikeys
-                    WHERE ACTIVE = 1
+                    WHERE (active = 1 OR active = 'true')
                       AND publicname = %s"""
         self._execute(query, (public_id,))
         return self._dictfetchone()
