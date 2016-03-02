@@ -10,15 +10,21 @@ import json
 import logging
 import re
 
-from .config import settings
-from .utils import (
+from yubistack.config import settings
+from yubistack.utils import (
     parse_querystring,
     wsgi_response,
     sign,
 )
-from .ykauth import YKAuthError, Client
-from .ykksm import YKKSMError, Decryptor
-from .ykval import (
+from yubistack.ykauth import (
+    YKAuthError,
+    Client,
+)
+from yubistack.ykksm import (
+    YKKSMError,
+    Decryptor,
+)
+from yubistack.ykval import (
     YKSyncError,
     YKValError,
     Sync,
