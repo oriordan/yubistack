@@ -15,6 +15,11 @@ function run_test() {
 
 rm -f /tmp/yubistack.log
 rm -f /tmp/tmp.*.yubistack
+cat > /tmp/yubistack.conf << EOF
+LOGLEVEL='DEBUG'
+USE_NATIVE_YKVAL = True
+USE_NATIVE_YKKSM = True
+EOF
 if [ "x$DB" = "xmysql" ]; then
   dbuser=travis
   mysql -u $dbuser -e 'create database ykksm;'
@@ -26,6 +31,13 @@ if [ "x$DB" = "xmysql" ]; then
   mysql -u $dbuser -e 'create database yubiauth;'
   mysql -u $dbuser yubiauth < yubiauth-db.sql
   dbrun_yubiauth="mysql -u $dbuser yubiauth -e"
+cat >> /tmp/yubistack.conf << EOF
+DATABASES = {
+  'ykksm': {'ENGINE': 'mysql', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': '$dbfile_ykksm'},
+  'ykval': {'ENGINE': 'mysql', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': '$dbfile_ykval'},
+  'yubiauth': {'ENGINE': 'mysql', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': '$dbfile_yubiauth'},
+}
+EOF
 
 elif [ "x$DB" = "xpgsql" ]; then
   dbuser=postgres
@@ -38,6 +50,13 @@ elif [ "x$DB" = "xpgsql" ]; then
   psql -U $dbuser -c 'create database yubiauth;'
   psql -U $dbuser yubiauth < yubiauth-db.sql
   dbrun_yubiauth="psql -U $dbuser ykval -c"
+cat >> /tmp/yubistack.conf << EOF
+DATABASES = {
+  'ykksm': {'ENGINE': 'postgres', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': '$dbfile_ykksm'},
+  'ykval': {'ENGINE': 'postgres', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': '$dbfile_ykval'},
+  'yubiauth': {'ENGINE': 'postgres', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': '$dbfile_yubiauth'},
+}
+EOF
 
 elif [ "x$DB" = "xsqlite" ]; then
   dbuser=""
@@ -50,10 +69,7 @@ elif [ "x$DB" = "xsqlite" ]; then
   dbrun_ykksm="sqlite3 $dbfile_ykksm"
   dbrun_ykval="sqlite3 $dbfile_ykval"
   dbrun_yubiauth="sqlite3 $dbfile_yubiauth"
-cat > /tmp/yubistack.conf << EOF
-LOGLEVEL='DEBUG'
-USE_NATIVE_YKVAL = True
-USE_NATIVE_YKKSM = True
+cat >> /tmp/yubistack.conf << EOF
 DATABASES = {
   'ykksm': {'ENGINE': 'sqlite', 'NAME': '$dbfile_ykksm'},
   'ykval': {'ENGINE': 'sqlite', 'NAME': '$dbfile_ykval'},
