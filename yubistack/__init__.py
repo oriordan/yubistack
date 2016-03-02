@@ -14,8 +14,8 @@ Examples:
 >>> c.authenticate('joe', 'secret', 'ccccccbcgujhingjrdejhgfnuetrgigvejhhgbkugded')
 False
 >>>
->>> from yubistack import Verifyer
->>> v = Verifyer()
+>>> from yubistack import Validator
+>>> v = Validator()
 >>> v.verify(1, 'ccccccbcgujhingjrdejhgfnuetrgigvejhhgbkugded')
 {'otp': 'ccccccbcgujhingjrdejhgfnuetrgigvejhhgbkugded', 'time': '2015-04-14T20:07:20Z5261', \
  'nonce': None, 'status': 'OK', 'sl': None, 'signature': 'h0P2wfJUqHQFuRpG4n1Kvk3KacE='}
@@ -26,12 +26,12 @@ False
 {'counter': '0235', 'low':' 21c4', 'high': 'b2', 'use':'42'}
 """
 
-__version__ = '0.4.8'
+__version__ = '0.4.9'
 __all__ = [
     'settings',
     'Client',
     'Decryptor',
-    'Verifyer',
+    'Validator',
 ]
 
 import imp
@@ -41,4 +41,4 @@ import logging
 from .config import settings
 from .ykauth import Client
 from .ykksm import Decryptor
-from .ykval import Verifyer
+from .ykval import Validator
