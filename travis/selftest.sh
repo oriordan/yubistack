@@ -33,9 +33,9 @@ if [ "x$DB" = "xmysql" ]; then
   dbrun_yubiauth="mysql -u $dbuser yubiauth -e"
 cat >> /tmp/yubistack.conf << EOF
 DATABASES = {
-  'ykksm': {'ENGINE': 'mysql', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': '$dbfile_ykksm'},
-  'ykval': {'ENGINE': 'mysql', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': '$dbfile_ykval'},
-  'yubiauth': {'ENGINE': 'mysql', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': '$dbfile_yubiauth'},
+  'ykksm': {'ENGINE': 'mysql', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': 'ykksm'},
+  'ykval': {'ENGINE': 'mysql', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': 'ykval'},
+  'yubiauth': {'ENGINE': 'mysql', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': 'yubiauth'},
 }
 EOF
 
@@ -52,9 +52,9 @@ elif [ "x$DB" = "xpgsql" ]; then
   dbrun_yubiauth="psql -U $dbuser ykval -c"
 cat >> /tmp/yubistack.conf << EOF
 DATABASES = {
-  'ykksm': {'ENGINE': 'postgres', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': '$dbfile_ykksm'},
-  'ykval': {'ENGINE': 'postgres', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': '$dbfile_ykval'},
-  'yubiauth': {'ENGINE': 'postgres', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': '$dbfile_yubiauth'},
+  'ykksm': {'ENGINE': 'postgres', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': 'ykksm'},
+  'ykval': {'ENGINE': 'postgres', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': 'ykval'},
+  'yubiauth': {'ENGINE': 'postgres', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': 'yubiauth'},
 }
 EOF
 
@@ -98,19 +98,20 @@ echo "Testing yubistack.ykksm"
 run_test "curl -s 'http://127.0.0.1:8080/wsapi/decrypt?otp=idkfefrdhtrutjduvtcjbfeuvhehdvjjlbchtlenfgku' | grep -q '^OK counter=0001 low=8d40 high=0f use=00'" 1;
 run_test "curl -s 'http://127.0.0.1:8080/wsapi/decrypt?otp=idkfefrdhtrutjduvtcjbfeuvhehdvjjlbchtlenfgku' -H 'Accept: application/json' | jq '.counter' |grep -q '0001'" 2;
 run_test "curl -s 'http://127.0.0.1:8080/wsapi/decrypt?otp=jdkfefrdhtrutjduvtcjbfeuvhehdvjjlbchtlenfgku' | grep -q '^ERR Unknown yubikey'" 3;
-run_test "curl -s 'http://127.0.0.1:8080/wsapi/decrypt?otp=jdkfefrdhtrutjduvtcjbfeuvhehdvjjlbchtlenfgku' -H 'Accept: application/json' | jq '.status' | grep -q 'Unknown yubikey'" 4;
+run_test "curl -s 'http://127.0.0.1:8080/wsapi/decrypt?otp=jdkfefrdhtrutjduvtcjbfeuvhehdvjjlbchtlenfgku' -H 'Accept: application/json' | jq '.error' | grep -q 'Unknown yubikey'" 4;
 run_test "curl -s 'http://127.0.0.1:8080/wsapi/decrypt?otp=idkfefrdhtrutjduvtcjbfeuvhehdvjjlbchtlenfgkc' | grep -q '^ERR Corrupt OTP'" 5;
-run_test "curl -s 'http://127.0.0.1:8080/wsapi/decrypt?otp=idkfefrdhtrutjduvtcjbfeuvhehdvjjlbchtlenfgkc' -H 'Accept: application/json' | jq '.status' |grep -q 'Corrupt OTP'" 6;
+run_test "curl -s 'http://127.0.0.1:8080/wsapi/decrypt?otp=idkfefrdhtrutjduvtcjbfeuvhehdvjjlbchtlenfgkc' -H 'Accept: application/json' | jq '.error' |grep -q 'Corrupt OTP'" 6;
 
 echo "Testing yubistack.ykauth"
 run_test "curl -s 'http://127.0.0.1:8080/yubiauth/client/authenticate' -XPOST --data 'username=test&password=1234&otp=idkfefrdhtrutjduvtcjbfeuvhehdvjjlbchtlenfgku' |grep -q 'false'" 7;
-run_test "curl -s 'http://127.0.0.1:8080/yubiauth/client/authenticate' -XPOST --data 'username=test&password=1234&otp=idkfefrdhtrutjduvtcjbfeuvhehdvjjlbchtlenfgku' -H 'Accept: application/json' |jq '.message' |grep -q 'Invalid password'" 8;
+run_test "curl -s 'http://127.0.0.1:8080/yubiauth/client/authenticate' -XPOST --data 'username=test&password=1234&otp=idkfefrdhtrutjduvtcjbfeuvhehdvjjlbchtlenfgku' -H 'Accept: application/json' |jq '.message' |grep -q '^\"Invalid password\"'" 8;
 run_test "curl -s 'http://127.0.0.1:8080/yubiauth/client/authenticate' -XPOST --data 'username=test&password=0000&otp=idkfefrdhtrutjduvtcjbfeuvhehdvjjlbchtlenfgku' |grep -q 'true'" 9;
-run_test "curl -s 'http://127.0.0.1:8080/yubiauth/client/authenticate' -XPOST --data 'username=test&password=0000&otp=idkfefrdhtrurndjtkffvlkeinjtghhcceicfurribeb' -H 'Accept: application/json' |jq '.message' |grep -q 'Successful authentication'" 10;
-run_test "curl -s 'http://127.0.0.1:8080/yubiauth/client/authenticate' -XPOST --data 'username=test&password=0000&otp=idkfefrdhtrurndjtkffvlkeinjtghhcceicfurribeb' -H 'Accept: application/json' |jq '.message' |grep -q 'Failed authentication: REPLAYED_OTP'" 11;
-run_test "curl -s 'http://127.0.0.1:8080/yubiauth/client/authenticate' -XPOST --data 'username=test&password=0000&otp=idkfefrdhtruegktggintbdhnbufiufhueicitcifvgu' -H 'Accept: application/json' |jq '.message' |grep -q 'Failed authentication: DELAYED_OTP'" 12;
-run_test "curl -s 'http://127.0.0.1:8080/yubiauth/client/authenticate' -XPOST --data 'username=test&password=0000&otp=idkfefrdhtruegktggintbdhnbufiufhueicitcifvgg' -H 'Accept: application/json' |jq '.message' |grep -q 'Failed authentication: BAD_OTP'" 13;
-run_test "curl -s 'http://127.0.0.1:8080/yubiauth/client/authenticate' -XPOST --data 'username=test&password=0000&otp=idkfefrdhtruegktggintbdhnbufiufhueicitcifvg' -H 'Accept: application/json' |jq '.message' |grep -q 'Token idkfefrdhtr is not associated with test'" 14;
+run_test "curl -s 'http://127.0.0.1:8080/yubiauth/client/authenticate' -XPOST --data 'username=test&password=0000&otp=idkfefrdhtrurndjtkffvlkeinjtghhcceicfurribeb' -H 'Accept: application/json' |jq '.message' |grep -q '^\"Successful authentication\"'" 10;
+run_test "curl -s 'http://127.0.0.1:8080/yubiauth/client/authenticate' -XPOST --data 'username=test&password=0000&otp=idkfefrdhtrurndjtkffvlkeinjtghhcceicfurribeb' -H 'Accept: application/json' |jq '.message' |grep -q '^\"Replayed OTP\"'" 11;
+run_test "curl -s 'http://127.0.0.1:8080/yubiauth/client/authenticate' -XPOST --data 'username=test&password=0000&otp=idkfefrdhtruegktggintbdhnbufiufhueicitcifvgu' -H 'Accept: application/json' |jq '.message' |grep -q '^\"Expired OTP\"'" 12;
+run_test "curl -s 'http://127.0.0.1:8080/yubiauth/client/authenticate' -XPOST --data 'username=test&password=0000&otp=idkfefrdhtruegktggintbdhnbufiufhueicitcifvgg' -H 'Accept: application/json' |jq '.message' |grep -q '^\"Corrupt OTP\"'" 13;
+run_test "curl -s 'http://127.0.0.1:8080/yubiauth/client/authenticate' -XPOST --data 'username=test&password=0000&otp=idkfefrdhtruegktggintbdhnbufiufhueicitcifvgx' -H 'Accept: application/json' |jq '.message' |grep -q '^\"Invalid OTP\"'" 14;
+run_test "curl -s 'http://127.0.0.1:8080/yubiauth/client/authenticate' -XPOST --data 'username=test&password=0000&otp=idkfefrdhtruegktggintbdhnbufiufhueicitcifvg' -H 'Accept: application/json' |jq '.message' |grep -q '^\"Token is not associated with user\"'" 15;
 
 
 kill $PID
