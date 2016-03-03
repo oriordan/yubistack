@@ -48,6 +48,7 @@ VALUES = [
     ('SYNC_LEVEL', 100),
     ('SYNC_POOL', []),
     ('SYNC_TIMEOUT', 3),
+    ('SYSLOG_WSGI_AUTH', True),
 ]
 
 def parse(conf):
