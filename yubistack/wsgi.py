@@ -9,27 +9,33 @@ to support backward compatibility.
 import json
 import logging
 import re
+import time
 
-from yubistack.config import settings
+from yubistack.config import (
+    settings,
+    TOKEN_LEN
+)
+from yubistack.exceptions import (
+    YKAuthError,
+    YKValError,
+    YKSyncError,
+    YKKSMError,
+)
 from yubistack.utils import (
     parse_querystring,
     wsgi_response,
     sign,
 )
-from yubistack.ykauth import (
-    YKAuthError,
-    Client,
-)
-from yubistack.ykksm import (
-    YKKSMError,
-    Decryptor,
-)
+from yubistack.ykauth import Client
+from yubistack.ykksm import Decryptor
 from yubistack.ykval import (
-    YKSyncError,
-    YKValError,
     Sync,
     Validator,
 )
+
+if settings['SYSLOG_WSGI_AUTH']:
+    import syslog
+    syslog.openlog(ident='yubistack', facility=syslog.LOG_AUTH)
 
 logger = logging.getLogger(__name__)
 
@@ -66,9 +72,13 @@ def authenticate(environ, start_response):
     """
     Handle authentications
     """
+    start_time = time.time()
+
     if 'client' not in PERSISTENT_OBJECTS:
         PERSISTENT_OBJECTS['client'] = Client()
     client = PERSISTENT_OBJECTS['client']
+    _format = 'json' if environ.get('HTTP_ACCEPT') == 'application/json' else 'text'
+
     try:
         # Parse POST request
         try:
@@ -77,27 +87,50 @@ def authenticate(environ, start_response):
             request_body_size = 0
         request_body = environ['wsgi.input'].read(request_body_size)
         params = parse_querystring(request_body.decode())
-        _format = 'text'
-        if params.get('format') == 'json' or environ['HTTP_ACCEPT'] == 'application/json':
-            _format = 'json'
-        username = params.get('username', '?')
         _params = params.copy()
-        _params['password'] = '********'
-        logger.debug('%s: PROCESSED QUERYSTRING: %s', username, _params)
+        _params['password'] = '*' * 8
+        logger.debug('PROCESSED QUERYSTRING: %s', _params)
+        # Checking parameters
         for req_param in REQUIRED_AUTH_PARAMS:
             if req_param not in params:
-                raise YKAuthError("Missing parameter: '%s'" % req_param)
-        output = client.authenticate(params['username'], params['password'], params['otp'])
+                raise YKAuthError('MISSING_PARAMETER')
+        client.authenticate(params['username'], params['password'], params['otp'])
+        status_code = 200
+        output = {
+            'token_id': params['otp'][:-TOKEN_LEN],
+            'status': 'OK',
+            'message': 'Successful authentication',
+        }
+    except (YKAuthError, YKValError, YKSyncError, YKKSMError) as err:
+        status_code = 400
+        output = {
+            'token_id': params['otp'][:-TOKEN_LEN],
+            'status': err.error_code,
+            'message': str(err),
+        }
     except Exception as err:
-        output = {'status_code': 500, 'username': username,
-                  'message': 'Backend error: %s' % err}
-        raise
+        status_code = 500
+        output = {
+            'token_id': params['otp'][:-TOKEN_LEN],
+            'status': 'BACKEND_ERROR',
+            'message': 'Backend error: %s' % err,
+        }
+        logger.exception('Backend error: %s', err)
     finally:
         content_type = 'application/json' if _format == 'json' else 'text/plain'
-        start_response(HTTP_STATUS_CODES[output['status_code']],
-                       [('Content-Type', content_type)])
-        output = json.dumps(output if _format == 'json' else (output['status_code'] == 200))
-        return [output.encode()]
+        start_response(HTTP_STATUS_CODES[status_code], [('Content-Type', content_type)])
+        output['username'] = params['username']
+        output['latency'] = round(time.time() - start_time, 3)
+        response = json.dumps(output if _format == 'json' else (status_code == 200))
+        if settings['SYSLOG_WSGI_AUTH']:
+            if status_code == 200:
+                severity = syslog.LOG_INFO
+            elif status_code == 400:
+                severity = syslog.LOG_WARNING
+            else:
+                severity = syslog.LOG_ERR
+            syslog.syslog(severity, response if _format == 'json' else json.dumps(output))
+        return [response.encode()]
 
 def decrypt(environ, start_response):
     """
@@ -115,19 +148,21 @@ def decrypt(environ, start_response):
             output = 'OK counter=%(counter)s low=%(low)s high=%(high)s use=%(use)s\n' % output
         status_code = 200
     except YKKSMError as err:
-        logger.exception('Decryption error: %s', err)
-        output = '%s\n' % err
+        logger.exception('Decryption error: %s', err.error_code)
+        output = '%s' % str(err)
         status_code = 400
     except Exception as err:
         logger.exception('Backend error: %s', err)
-        output = 'ERR Backend failure\n'
+        output = 'Backend failure\n'
         status_code = 500
     finally:
         content_type = 'application/json' if _format == 'json' else 'text/plain'
         if _format == 'json':
             if isinstance(output, str):
-                output = {'status': output.rstrip()}
+                output = {'error': output}
             output = json.dumps(output)
+        elif status_code != 200:
+            output = 'ERR %s\n' % output
         start_response(HTTP_STATUS_CODES[status_code], [('Content-Type', content_type)])
         return [output.encode()]
 
