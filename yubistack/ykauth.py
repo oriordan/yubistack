@@ -7,7 +7,6 @@ Python Yubikey Stack - Authentication module
 
 import base64
 import logging
-import time
 import urllib
 
 from passlib.context import CryptContext
@@ -18,17 +17,14 @@ from .config import (
     TOKEN_LEN,
 )
 from .db import DBHandler
+from .exceptions import YKAuthError
 from .utils import (
     sign,
     generate_nonce,
 )
-from .ykval import YKValError
 
 logger = logging.getLogger(__name__)
 
-class YKAuthError(Exception):
-    """ YubiAuth exceptions """
-    pass
 
 class DBH(DBHandler):
     """
@@ -80,7 +76,7 @@ class VerificationClient(object):
             data.append(('timestamp', '1'))
 
         if sync_level is not None:
-            data.append(('sl', sl))
+            data.append(('sl', sync_level))
 
         if timeout:
             data.append(('timeout', timeout))
@@ -99,6 +95,7 @@ class VerificationClient(object):
                                     timeout=timeout, sync_level=sl)
         req = requests.get(self.urls[0] + '?' + query)
         print(req.text)
+
 
 class Client(object):
     """ Authentication Client """
@@ -131,7 +128,7 @@ class Client(object):
         """
         user = self.db.get_user(username)
         if not user:
-            raise YKAuthError("No such user: %s" % username)
+            raise YKAuthError('UNKNOWN_USER')
         logger.debug('Found user: %s', user)
         return user
 
@@ -153,11 +150,11 @@ class Client(object):
         token = self.db.get_token(user['users_id'], token_id)
         if not token:
             logger.error('Token %s is not associated with %s', token_id, user['users_name'])
-            raise YKAuthError('Token %s is not associated with %s' % (token_id, user['users_name']))
+            raise YKAuthError('INVALID_TOKEN')
         logger.debug('Found token: %s', token)
         if not token.get('yubikeys_enabled'):
             logger.error('Token %s is disabled for %s', token_id, user['users_name'])
-            raise YKAuthError('Token is disabled for %s' % user['users_name'])
+            raise YKAuthError('DISABLED_TOKEN')
 
     def _validate_password(self, user, password):
         """
@@ -166,7 +163,7 @@ class Client(object):
         valid, new_hash = self.pwd_context.verify_and_update(str(password), user['users_auth'])
         if not valid:
             logger.error('%(users_name)s: Invalid password', user)
-            raise YKAuthError('Invalid password')
+            raise YKAuthError('BAD_PASSWORD')
         if new_hash:
             # TODO: update user's hash with new_hash
             logger.warning("User %(users_name)s's hash needs update", user)
@@ -202,29 +199,13 @@ class Client(object):
             3. Validate users password
             4. Validate OTP (YKVal)
         """
-        auth_start = time.time()
         token_id = otp[:-TOKEN_LEN]
-        try:
-            # STEP 1: Check if token is enabled
-            user = self._get_user_info(username)
-            # STEP 2: Check if token is associated with the user & enabled
-            self._check_token(user, token_id)
-            # STEP 3: Validate users password
-            self._validate_password(user, password)
-            # STEP 4: Validate OTP
-            self.ykval_client.verify(otp)
-            status_code = 200
-            message = 'Successful authentication'
-            logger.info('%s: %s', username, message)
-        except (YKAuthError, YKValError) as err:
-            status_code = 400
-            message = 'Failed authentication: %s' % err
-            logger.warning('%s: %s', username, message)
-        except Exception as err:
-            status_code = 500
-            message = 'Backend error: %s' % err
-            logger.exception('%s: %s', username, message)
-        finally:
-            return {'status_code': status_code, 'username': username,
-                    'token_id': token_id, 'message': message,
-                    'latency': round(time.time() - auth_start, 3)}
+        # STEP 1: Check if token is enabled
+        user = self._get_user_info(username)
+        # STEP 2: Check if token is associated with the user & enabled
+        self._check_token(user, token_id)
+        # STEP 3: Validate users password
+        self._validate_password(user, password)
+        # STEP 4: Validate OTP
+        self.ykval_client.verify(otp)
+        return True
