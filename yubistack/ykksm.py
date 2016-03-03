@@ -14,6 +14,7 @@ from Crypto.Random import atfork
 from .config import settings
 from .crypt import PrivateKey
 from .db import DBHandler
+from .exceptions import YKKSMError
 from .utils import (
     aes128ecb_decrypt,
     check_crc,
@@ -26,11 +27,6 @@ OTP_REGEX = re.compile(r'^(?P<yk_id>[cbdefghijklnrtuv]{0,16})(?P<modhex>[cbdefgh
 CRYPTER = None
 if settings.get('YKKSM_KEYDIR') and PrivateKey:
     CRYPTER = PrivateKey(settings['YKKSM_KEYDIR'])
-
-
-class YKKSMError(Exception):
-    """ Errors returned by the application """
-    pass
 
 
 class DBH(DBHandler):
@@ -93,7 +89,7 @@ class Decryptor(object):
         match = re.match(OTP_REGEX, otp)
         if not match:
             logger.error('Invalid OTP format: %s', otp)
-            raise YKKSMError('ERR Invalid OTP format')
+            raise YKKSMError('BAD_OTP')
         return match.groups()
 
     def _get_key_and_internalname(self, public_id):
@@ -110,15 +106,15 @@ class Decryptor(object):
             logger.exception('Database error: %s', err)
             raise
         if not data:
-            raise YKKSMError('ERR Unknown yubikey')
+            raise YKKSMError('UNKNOWN_TOKEN')
         logger.debug('Found user: ID: %s, INTERNALNAME: %s', public_id, data['internalname'])
         return (data['aeskey'], data['internalname'])
 
     def decrypt(self, otp):
         """ Decrypt OTP """
         if not otp:
-            logger.error('No OTP provided')
-            raise YKKSMError('ERR No OTP provided')
+            logger.error('MISSING_OTP')
+            raise YKKSMError('MISSING_OTP')
         # Get public_id, modhex, key and internalname
         public_id, modhex = self._parse_otp(otp)
         aeskey, internalname = self._get_key_and_internalname(public_id)
@@ -129,10 +125,10 @@ class Decryptor(object):
         if plaintext[:12] != internalname:
             logger.error('UID Error: %s %s: %s vs %s',
                          otp, plaintext, plaintext[:12], internalname)
-            raise YKKSMError('ERR Corrupt OTP')
+            raise YKKSMError('CORRUPT_OTP')
         if not check_crc(plaintext):
             logger.error('CRC Error: %s: %s', otp, plaintext)
-            raise YKKSMError('ERR Corrupt OTP')
+            raise YKKSMError('CORRUPT_OTP')
         # Construct output
         output = {
             'counter': plaintext[14:16] + plaintext[12:14],
