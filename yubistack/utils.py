@@ -17,8 +17,6 @@ from random import getrandbits
 import re
 import sys
 
-import requests
-
 logger = logging.getLogger(__name__)
 
 HEX_CHARS = '0123456789abcdef'
@@ -149,31 +147,6 @@ def sign(data, apikey):
     signature = base64.b64encode(signature).decode()
     logger.debug('Signed data: %s (H=%s)', query_string, signature)
     return signature
-
-def decrypt_otp(otp, urls=None, decryptor=None):
-    """
-    Call KSM url to decrypt OTP
-    Response is processed further
-    """
-    if decryptor:
-        data = decryptor.decrypt(otp)
-        return dict([(k, int(v, 16)) for k, v in data.items()])
-    elif urls:
-        # TODO: Support for async req for multiple servers
-        for url in urls:
-            req = requests.get(url, params={'otp': otp}, headers={'Accept': 'application/json'})
-            logger.debug('YK-KSM response: %s (status_code: %s)', req.text, req.status_code)
-            if req.headers['Content-Type'] == 'application/json' and req.status_code == 200:
-                return dict([(k, int(v, 16)) for k, v in req.json().items()])
-            if req.text.startswith('OK'):
-                resp = {}
-                for i in req.text.split()[1:]:
-                    key, val = i.split('=')
-                    resp[key] = int(val, 16)
-                return resp
-    else:
-        logger.error("No KSM service provided. Can't decrypt OTP.")
-    return False
 
 def generate_nonce():
     """
