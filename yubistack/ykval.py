@@ -114,13 +114,7 @@ class DBH(DBHandler):
                        %(yk_high)s,
                        %(nonce)s
                 )"""
-        try:
-            self._execute(query, identity)
-            self._db.commit()
-        except Exception as err:
-            self._db.rollback()
-            logger.exception('DB Error: %s', err)
-            raise
+        self._execute(query, identity)
 
     def get_queue(self, modified, server_nonce):
         """
@@ -144,12 +138,7 @@ class DBH(DBHandler):
                          WHERE server = %s
                            AND modified = %s
                            AND server_nonce = %s"""
-        try:
-            self._execute(query, (server, modified, server_nonce))
-            self._db.commit()
-        except Exception as err:
-            logger.exception('DB Error: %s', err)
-            raise
+        self._execute(query, (server, modified, server_nonce))
 
     def null_queue(self, server_nonce):
         """
@@ -159,12 +148,7 @@ class DBH(DBHandler):
         query = """UPDATE queue
                       SET queued = NULL
                     WHERE server_nonce = %s"""
-        try:
-            self._execute(query, (server_nonce,))
-            self._db.commit()
-        except Exception as err:
-            logger.exception('DB Error: %s', err)
-            raise
+        self._execute(query, (server_nonce,))
 
     def update_db_counters(self, params):
         """ Update table with new counter values """
@@ -179,13 +163,7 @@ class DBH(DBHandler):
                       AND (yk_counter < %(yk_counter)s
                        OR (yk_counter = %(yk_counter)s
                       AND yk_use < %(yk_use)s))"""
-        try:
-            self._execute(query, params)
-            self._db.commit()
-        except Exception as err:
-            self._db.rollback()
-            logger.exception('DB Error: %s', err)
-            raise
+        self._execute(query, params)
 
     def enqueue(self, otp_params, local_params, server, server_nonce):
         """
@@ -203,14 +181,8 @@ class DBH(DBHandler):
                         server_nonce,
                         info
                     ) VALUES (%s, %s, %s, %s, %s, %s)"""
-        try:
-            self._execute(query, (int(time.time()), otp_params['modified'],
-                                  otp_params['otp'], server, server_nonce, info))
-            self._db.commit()
-        except Exception as err:
-            self._db.rollback()
-            logger.exception('DB Error: %s', err)
-            raise
+        self._execute(query, (int(time.time()), otp_params['modified'],
+                              otp_params['otp'], server, server_nonce, info))
 
     def get_keys(self, yk_publicname):
         """ Get all keys from DB """

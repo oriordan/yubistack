@@ -55,7 +55,8 @@ class DBHandler(object):
                 query = query.replace('%(', ':').replace(')s', '')
         logger.debug('QUERY: %s PARAMS: %s', query, params)
         try:
-            return self.cursor.execute(query, params)
+            rowcount = self.cursor.execute(query, params)
+            self._db.commit()
         except (AttributeError, self.dbdriver.OperationalError) as err:
             if not retry:
                 logger.debug('Database reconnect due to error: %s', err)
@@ -63,6 +64,9 @@ class DBHandler(object):
                 return self._execute(query, params, retry=True)
             else:
                 raise
+        except Exception as err:
+            logger.exception('Database error: ', err)
+            raise
 
     def _dictfetchall(self):
         """ Wrapper to return DB results in dict format """
