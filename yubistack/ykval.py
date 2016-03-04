@@ -57,39 +57,35 @@ class DBH(DBHandler):
 
     def get_local_params(self, yk_publicname):
         """ Get yubikey parameters from DB """
-        try:
-            query = """SELECT active,
-                              modified,
-                              yk_publicname,
-                              yk_counter,
-                              yk_use,
-                              yk_low,
-                              yk_high,
-                              nonce
-                         FROM yubikeys
-                        WHERE yk_publicname = %s"""
-            self._execute(query, (yk_publicname,))
-            local_params = self._dictfetchone()
-            if not local_params:
-                local_params = {
-                    'active': 1,
-                    'modified': -1,
-                    'yk_publicname': yk_publicname,
-                    'yk_counter': -1,
-                    'yk_use': -1,
-                    'yk_low': -1,
-                    'yk_high': -1,
-                    'nonce': '0000000000000000',
-                    'created': int(time.time())
-                }
-                # Key was missing in DB, adding it
-                self.add_new_identity(local_params)
-                logger.warning('Discovered new identity %s', yk_publicname)
-            logger.debug('Auth data: %s', local_params)
-            return local_params
-        except:
-            logger.exception('Database error')
-            raise
+        query = """SELECT active,
+                          modified,
+                          yk_publicname,
+                          yk_counter,
+                          yk_use,
+                          yk_low,
+                          yk_high,
+                          nonce
+                     FROM yubikeys
+                    WHERE yk_publicname = %s"""
+        self._execute(query, (yk_publicname,))
+        local_params = self._dictfetchone()
+        if not local_params:
+            local_params = {
+                'active': 1,
+                'modified': -1,
+                'yk_publicname': yk_publicname,
+                'yk_counter': -1,
+                'yk_use': -1,
+                'yk_low': -1,
+                'yk_high': -1,
+                'nonce': '0000000000000000',
+                'created': int(time.time())
+            }
+            # Key was missing in DB, adding it
+            self.add_new_identity(local_params)
+            logger.warning('Discovered new identity %s', yk_publicname)
+        logger.debug('Auth data: %s', local_params)
+        return local_params
 
     def add_new_identity(self, identity):
         """ Create new key identity """
@@ -487,20 +483,12 @@ class Validator(object):
                            local_params, otp_params)
             raise YKValError('REPLAYED_OTP')
         # Valid OTP, update DB
-        try:
-            self.db.update_db_counters(otp_params)
-        except:
-            logger.exception('Failed to update yubikey counters in database')
-            raise
+        self.db.update_db_counters(otp_params)
 
     def replicate(self, otp_params, local_params, server_nonce):
         """ Handle sync across the cluster """
-        try:
-            for server in settings['SYNC_SERVERS']:
-                self.db.enqueue(otp_params, local_params, server, server_nonce)
-        except:
-            logger.exception('Failed to queue sync requests')
-            raise
+        for server in settings['SYNC_SERVERS']:
+            self.db.enqueue(otp_params, local_params, server, server_nonce)
 
         req_answers = round(len(self.sync_servers) * float(self.sync_level) / 100.0)
         if req_answers:

@@ -41,7 +41,7 @@ class DBH(DBHandler):
         query = """SELECT aeskey,
                           internalname
                      FROM yubikeys
-                    WHERE (active = 1 OR active = 'true')
+                    WHERE (active = '1' OR active = 'true')
                       AND publicname = %s"""
         self._execute(query, (public_id,))
         return self._dictfetchone()
@@ -100,11 +100,7 @@ class Decryptor(object):
 
         NOTE: Consider using a Yubikey HSM stick instead of ykksm
         """
-        try:
-            data = self.db.get_key_and_internalname(public_id)
-        except Exception as err:
-            logger.exception('Database error: %s', err)
-            raise
+        data = self.db.get_key_and_internalname(public_id)
         if not data:
             raise YKKSMError('UNKNOWN_TOKEN')
         logger.debug('Found user: ID: %s, INTERNALNAME: %s', public_id, data['internalname'])
