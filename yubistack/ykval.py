@@ -71,7 +71,7 @@ class DBH(DBHandler):
         local_params = self._dictfetchone()
         if not local_params:
             local_params = {
-                'active': 1,
+                'active': '1',
                 'modified': -1,
                 'yk_publicname': yk_publicname,
                 'yk_counter': -1,
