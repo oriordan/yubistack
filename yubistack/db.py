@@ -65,7 +65,7 @@ class DBHandler(object):
             else:
                 raise
         except Exception as err:
-            logger.exception('Database error: ', err)
+            logger.exception('Database error: %s', err)
             raise
 
     def _dictfetchall(self):
