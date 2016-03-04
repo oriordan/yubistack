@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 set -x
 
 function run_test() {
@@ -9,7 +8,7 @@ function run_test() {
         kill $PID
         exit 1
     else
-        echo "Sucess $2"
+        echo "Success $2"
     fi
 }
 
@@ -84,9 +83,9 @@ fi
 
 export YUBISTACK_SETTINGS="/tmp/yubistack.conf"
 $dbrun_ykksm "insert into yubikeys (publicname,internalname,aeskey,serialnr,created,lockcode,creator) values('idkfefrdhtru','609963eae7b5','c68c9df8cbfe7d2f994cb904046c7218',0,0,'','');"
-$dbrun_ykval "insert into clients (id, active, created, secret) values(1, 1, 1383728711, 'EHmo8FMxuhumBlTinC4uYL0Mgwg=');"
+$dbrun_ykval "insert into clients (id, active, created, secret) values(1, '1', 1383728711, 'EHmo8FMxuhumBlTinC4uYL0Mgwg=');"
 $dbrun_yubiauth "insert into users (id, name, auth) values(1, 'test', '\$5\$rounds=510308\$HGI8sEFyUgh9GQhx\$y7zXOdPTC65ee1aNHU7lX2QnZw2SPN0Ag7RSpdb4aj9');"
-$dbrun_yubiauth "insert into yubikeys (id, prefix, enabled) values(1, 'idkfefrdhtru', 1);"
+$dbrun_yubiauth "insert into yubikeys (id, prefix, enabled) values(1, 'idkfefrdhtru', '1');"
 $dbrun_yubiauth "insert into user_yubikeys (user_id, yubikey_id) values(1, 1);"
 
 python -m yubistack.wsgi "yubistack.wsgi.main()" &
