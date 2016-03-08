@@ -29,9 +29,9 @@ False
 __version__ = '0.5.2'
 __all__ = [
     'settings',
-    'Sync',
     'Client',
     'Decryptor',
+    'Sync',
     'Validator',
 ]
 
@@ -40,7 +40,7 @@ import os
 import logging
 
 from .config import settings
-from .sync import Sync
 from .ykauth import Client
 from .ykksm import Decryptor
+from .yksync import Sync
 from .ykval import Validator

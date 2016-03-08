@@ -23,12 +23,12 @@ from .config import (
 )
 from .db import DBHandler
 from .exceptions import YKValError
-from .sync import Sync
 from .utils import (
     generate_nonce,
     counters_eq,
     counters_gte,
 )
+from .yksync import Sync
 
 logger = logging.getLogger(__name__)
 

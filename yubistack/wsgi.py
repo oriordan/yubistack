@@ -26,9 +26,9 @@ from yubistack.utils import (
     wsgi_response,
     sign,
 )
-from yubistack.sync import Sync
 from yubistack.ykauth import Client
 from yubistack.ykksm import Decryptor
+from yubistack.yksync import Sync
 from yubistack.ykval import Validator
 
 if settings['SYSLOG_WSGI_AUTH']:
