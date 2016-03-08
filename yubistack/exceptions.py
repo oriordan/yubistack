@@ -21,7 +21,7 @@ STATUS_CODES = {
     'MISSING_PARAMETER': 'The request missing parameter',
     'NO_SUCH_CLIENT': 'The request id does not exist',
     'NOT_ENOUGH_ANSWERS': 'Server could not get requested number of syncs before timeout',
-    'OPERATION_NOT_ALLOWED': 'The request id is not allowed to verify OTPs',
+    'OPERATION_NOT_ALLOWED': 'The request is now allowed',
     'REPLAYED_OTP': 'Replayed OTP',
     'REPLAYED_REQUEST': 'Server has seen the OTP/Nonce combination before',
     # YKKSM
