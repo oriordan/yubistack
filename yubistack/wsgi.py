@@ -78,6 +78,7 @@ def authenticate(environ, start_response):
         PERSISTENT_OBJECTS['client'] = Client()
     client = PERSISTENT_OBJECTS['client']
     _format = 'json' if environ.get('HTTP_ACCEPT') == 'application/json' else 'text'
+    params = {}
 
     try:
         # Parse POST request
@@ -96,31 +97,27 @@ def authenticate(environ, start_response):
                 raise YKAuthError('MISSING_PARAMETER')
         client.authenticate(params['username'], params['password'], params['otp'])
         status_code = 200
-        output = {
-            'token_id': params['otp'][:-TOKEN_LEN],
-            'status': 'OK',
-            'message': 'Successful authentication',
-        }
+        output = {'status': 'OK',
+                  'message': 'Successful authentication'}
     except (YKAuthError, YKValError, YKSyncError, YKKSMError) as err:
         status_code = 400
-        output = {
-            'token_id': params['otp'][:-TOKEN_LEN],
-            'status': err.error_code,
-            'message': str(err),
-        }
+        output = {'status': err.error_code,
+                  'message': str(err)}
     except Exception as err:
         status_code = 500
-        output = {
-            'token_id': params['otp'][:-TOKEN_LEN],
-            'status': 'BACKEND_ERROR',
-            'message': 'Backend error: %s' % err,
-        }
+        output = {'status': 'BACKEND_ERROR',
+                  'message': 'Backend error: %s' % err}
         logger.exception('Backend error: %s', err)
     finally:
         content_type = 'application/json' if _format == 'json' else 'text/plain'
         start_response(HTTP_STATUS_CODES[status_code], [('Content-Type', content_type)])
-        output['username'] = params['username']
+        output['username'] = params.get('username', '')
+        if len(params.get('otp', '')) >= TOKEN_LEN:
+            output['token_id'] = params['otp'][:-TOKEN_LEN]
+        else:
+            output['token_id'] = ''
         output['latency'] = round(time.time() - start_time, 3)
+        output['src_ip'] = environ.get('REMOTE_ADDR')
         response = json.dumps(output if _format == 'json' else (status_code == 200))
         if settings['SYSLOG_WSGI_AUTH']:
             if status_code == 200:
@@ -215,7 +212,8 @@ def sync(environ, start_response):
             logger.info('Operation not permitted from IP %(REMOTE_ADDR)s', environ)
             logger.debug('Remote IP %s is not in allowed sync pool: %s',
                          environ['REMOTE_ADDR'], settings['SYNC_POOL'])
-            raise YKSyncError('OPERATION_NOT_ALLOWED')
+            raise YKSyncError('OPERATION_NOT_ALLOWED',
+                              'Remote IP %(REMOTE_ADDR)s it not in sync pool' % environ)
         sync_params = parse_querystring(environ['QUERY_STRING'])
         logger.info('Received: %s', sync_params)
         synclib = Sync()
