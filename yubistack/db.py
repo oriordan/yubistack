@@ -204,7 +204,8 @@ class DBHandler:
         query = """SELECT server,
                           otp,
                           modified,
-                          info
+                          info,
+                          server_nonce
                      FROM queue"""
         self._execute(query)
         return self._dictfetchall()

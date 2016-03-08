@@ -76,12 +76,12 @@ def main():
                                         'and nonce differs. This response would have '
                                         'marked the OTP as invalid.', server)
                         # Delete queue entry
-                        sync.db.remove_from_queue(server, item['modified'], item['nonce'])
+                        sync.db.remove_from_queue(server, item['modified'], item['server_nonce'])
                     elif resp.text.rstrip().endswith('status=BAD_OTP'):
                         logger.warning('[%s]: Remote server says BAD_OTP, pointless to try '
                                        'again, removing from queue.', server)
                         # Delete queue entry
-                        sync.db.remove_from_queue(server, item['modified'], item['nonce'])
+                        sync.db.remove_from_queue(server, item['modified'], item['server_nonce'])
                     else:
                         logger.error('[%s]: Remote server refused our sync request. '
                                      'Check remote server logs.', server)
