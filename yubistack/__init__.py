@@ -26,7 +26,7 @@ False
 {'counter': '0235', 'low':' 21c4', 'high': 'b2', 'use':'42'}
 """
 
-__version__ = '0.5.2'
+__version__ = '0.5.3'
 __all__ = [
     'settings',
     'Client',
