@@ -26,40 +26,7 @@ from .utils import (
 logger = logging.getLogger(__name__)
 
 
-class DBH(DBHandler):
-    """
-    Extending the generic DBHandler class with the required queries
-    """
-    def get_user(self, username):
-        """
-        Read user information for Yubiauth
-        """
-        query = """SELECT users.attribute_association_id AS users_attribute_association_id,
-                          users.id AS users_id, users.name AS users_name,
-                          users.auth AS users_auth
-                     FROM users
-                    WHERE users.name = %s"""
-        self._execute(query, (username,))
-        return self._dictfetchone()
-
-    def get_token(self, user_id, token_id):
-        """
-        Read user attribute information for Yubiauth
-        """
-        query = """SELECT yubikeys.attribute_association_id AS yubikeys_attribute_association_id,
-                          yubikeys.id AS yubikeys_id,
-                          yubikeys.prefix AS yubikeys_prefix,
-                          yubikeys.enabled AS yubikeys_enabled
-                     FROM yubikeys
-               INNER JOIN user_yubikeys
-                       ON user_yubikeys.yubikey_id = yubikeys.id
-                    WHERE user_yubikeys.user_id = %s
-                      AND yubikeys.prefix = %s"""
-        self._execute(query, (user_id, token_id))
-        return self._dictfetchone()
-
-
-class VerificationClient(object):
+class VerificationClient:
     """ Verification Client """
     def __init__(self, urls, client_id=None, apikey=None):
         self.urls = urls
@@ -97,10 +64,10 @@ class VerificationClient(object):
         print(req.text)
 
 
-class Client(object):
+class Client:
     """ Authentication Client """
     def __init__(self):
-        self.db = DBH(db='yubiauth')
+        self.db = DBHandler(db='yubiauth')
         self.pwd_context = CryptContext(**settings['CRYPT_CONTEXT'])
         if settings['USE_NATIVE_YKVAL']:
             # Native verify

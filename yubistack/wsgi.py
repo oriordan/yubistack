@@ -26,12 +26,10 @@ from yubistack.utils import (
     wsgi_response,
     sign,
 )
+from yubistack.sync import Sync
 from yubistack.ykauth import Client
 from yubistack.ykksm import Decryptor
-from yubistack.ykval import (
-    Sync,
-    Validator,
-)
+from yubistack.ykval import Validator
 
 if settings['SYSLOG_WSGI_AUTH']:
     import syslog

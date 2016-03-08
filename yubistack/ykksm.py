@@ -28,31 +28,12 @@ CRYPTER = None
 if settings.get('YKKSM_KEYDIR') and PrivateKey:
     CRYPTER = PrivateKey(settings['YKKSM_KEYDIR'])
 
-
-class DBH(DBHandler):
-    """
-    Extending the generic DBHandler class with the required queries
-    """
-
-    def get_key_and_internalname(self, public_id):
-        """
-        Read token's AESkey and internalname for OTP decryption
-        """
-        query = """SELECT aeskey,
-                          internalname
-                     FROM yubikeys
-                    WHERE (active = '1' OR active = 'true')
-                      AND publicname = %s"""
-        self._execute(query, (public_id,))
-        return self._dictfetchone()
-
-
-class DecryptorDBH(DBH):
+class DecryptorDBH(DBHandler):
     """
     Transparently decrypt RSA encrypted aeskeys
     """
     def get_key_and_internalname(self, public_id):
-        data = DBH.get_key_and_internalname(self, public_id)
+        data = DBHandler.get_key_and_internalname(self, public_id)
         if data:
             try:
                 # AES keys are 16 bytes (hex)
@@ -70,13 +51,13 @@ class DecryptorDBH(DBH):
             return data
 
 
-class Decryptor(object):
+class Decryptor:
     """ Object to decrypt an OTP """
     def __init__(self, db='ykksm'):
         if settings.get('YKKSM_KEYDIR'):
             self.db = DecryptorDBH(db=db)
         else:
-            self.db = DBH(db=db)
+            self.db = DBHandler(db=db)
 
     def _parse_otp(self, otp):
         """

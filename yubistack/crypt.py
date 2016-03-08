@@ -84,7 +84,7 @@ command:
 '''
 
 
-class SHA2(object):
+class SHA2:
     """Wrapper for the SHA-256 hashing algorithm."""
     digest_size = 32
 
@@ -114,7 +114,7 @@ class SHA2(object):
 SHA2.new = SHA2
 
 
-class Crypter(object):
+class Crypter:
     """Crypter base class for doing encryption and decryption."""
 
     mask = '*.*'
