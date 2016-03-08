@@ -231,6 +231,9 @@ class PrivateKey(Crypter):
 
     @property
     def passphrase(self):
+        """
+        Return passphrase or prompt the user for one if it's not set
+        """
         if not hasattr(self, '_passphrase'):
             try:
                 return os.environ['YKKSM_PASSPHRASE']
@@ -240,6 +243,9 @@ class PrivateKey(Crypter):
         return self._passphrase
 
     def _getpass_cooked(self, prompt):
+        """
+        Prompt user for password
+        """
         sys.stdout.write(prompt + '\r\n')
         phrase = []
 
