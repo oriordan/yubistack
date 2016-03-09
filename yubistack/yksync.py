@@ -28,7 +28,8 @@ from .utils import (
 )
 
 logger = logging.getLogger(__name__)
-
+requests_log = logging.getLogger('requests')
+requests_log.setLevel(logging.WARNING if logger.getEffectiveLevel() != 10 else logging.DEBUG)
 
 REQUIRED_PARAMS = ['modified', 'otp', 'nonce', 'yk_publicname',
                    'yk_counter', 'yk_use', 'yk_high', 'yk_low']
