@@ -49,38 +49,43 @@ class Validator:
 
     def check_parameters(self, params):
         """ Perform Sanity check on parameters """
-        # CLIENT ID
-        if params['client_id'] and not isinstance(params['client_id'], int):
-            logger.error('id provided in request must be an integer')
-            raise YKValError('INVALID_PARAMETER', 'client_id')
+        params['token_id'] = '?' * 12
         # OTP
         if not TOKEN_LEN <= len(params['otp']) <= OTP_MAX_LEN:
-            logger.error('Incorrect OTP length: %(otp)s', params)
+            logger.error('[%(token_id)s] Incorrect OTP length: %(otp)s', params)
             raise YKValError('BAD_OTP')
+        params['token_id'] = params['otp'][:-TOKEN_LEN]
         if not re.match(r'^[cbdefghijklnrtuv]+$', params['otp']):
-            logger.error('Invalid OTP: %(otp)s', params)
+            logger.error('[%(token_id)s] Invalid OTP: %(otp)s', params)
             raise YKValError('BAD_OTP')
+        # CLIENT ID
+        if params['client_id'] and not isinstance(params['client_id'], int):
+            logger.error('[%(token_id)s] id provided in request '
+                         '(%(client_id)s must be an integer', params)
+            raise YKValError('INVALID_PARAMETER', 'client_id')
         # NONCE:
         # - If client_id is not provided, we're using a Native stack call
         if params['client_id'] and not params['nonce']:
-            logger.error('Nonce is missing and protocol version >= 2.0')
+            logger.error('[%(token_id)s] Nonce is missing', params)
             raise YKValError('MISSING_PARAMETER', 'nonce')
         if params['nonce'] and not re.match(r'^[A-Za-z0-9]+$', params['nonce']):
-            logger.error('Nonce is provided but not correct')
+            logger.error('[%(token_id)s] Nonce is provided but not correct', params)
             raise YKValError('INVALID_PARAMETER', 'nonce')
         if params['nonce'] and not 16 <= len(params['nonce']) <= 40:
-            logger.error('Nonce too short or too long')
+            logger.error('[%(token_id)s] Nonce too short or too long (%(nonce)s)', params)
             raise YKValError('INVALID_PARAMETER', 'nonce')
         # TIMESTAMP
         #   NOTE: Timestamp parameter is not checked since current protocol says
         #   that 1 means request timestamp and anything else is discarded.
         # TIMEOUT
         if not isinstance(params['timeout'], int):
-            logger.error('timeout is provided but not correct')
+            logger.error('[%(token_id)s] timeout is provided but not correct (%(timeout)s)',
+                         params)
             raise YKValError('INVALID_PARAMETER', 'timeout')
         # SYNC LEVEL
         if not (isinstance(params['sync_level'], int) and 0 <= params['sync_level'] <= 100):
-            logger.error('SL (sync level) is provided but not correct')
+            logger.error('[%(token_id)s] SL (sync level) is provided but '
+                         'not correct (%(sync_level)s)', params)
             raise YKValError('INVALID_PARAMETER', 'sync_level')
 
     def get_client_apikey(self, client_id):
@@ -117,7 +122,8 @@ class Validator:
             # TODO: Support for async req for multiple servers
             for url in settings['YKKSM_SERVERS']:
                 req = requests.get(url, params={'otp': otp}, headers={'Accept': 'application/json'})
-                logger.debug('YK-KSM response: %s (status_code: %s)', req.text, req.status_code)
+                logger.debug('[%s] YK-KSM response: %s (status_code: %s)',
+                             otp[:-TOKEN_LEN], req.text, req.status_code)
                 if req.headers['Content-Type'] == 'application/json' and req.status_code == 200:
                     return dict([(k, int(v, 16)) for k, v in req.json().items()])
                 if req.text.startswith('OK'):
@@ -146,14 +152,14 @@ class Validator:
     def validate_otp(self, otp_params, local_params):
         """ Validate OTP """
         # First check if OTP is seen with the same nonce, in such case we have an replayed request
-        if counters_eq(local_params, otp_params) \
-            and local_params['nonce'] == otp_params['nonce']:
-            logger.warning('Replayed request')
+        if counters_eq(local_params, otp_params) and local_params['nonce'] == otp_params['nonce']:
+            logger.error('[%(yk_publicname)s] Replayed request '
+                         '(OTP: %(otp)s, Nonce: %(nonce)s)', otp_params)
             raise YKValError('REPLAYED_REQUEST')
         # Check the OTP counters against local DB
         if counters_gte(local_params, otp_params):
-            logger.warning('Replayed OTP: Local counters higher (%s > %s)',
-                           local_params, otp_params)
+            logger.error('[%s] Replayed OTP: Local counters higher (%s > %s)',
+                         otp_params['yk_publicname'], local_params, otp_params)
             raise YKValError('REPLAYED_OTP')
         # Valid OTP, update DB
         self.db.update_db_counters(otp_params)
@@ -174,8 +180,8 @@ class Validator:
             sync_success = True
             sync_level_success_rate = 0
             sync_metrics = {'answers': 0, 'valid_answers': 0}
-        logger.info('%s: sync details: synclevel=%s server_count=%d req_answers=%d '
-                    'answers=%d valid_answers=%s sl_success_rate=%.3f timeout=%s',
+        logger.info('[%s] Sync details: synclevel=%s server_count=%s req_answers=%s '
+                    'answers=%s valid_answers=%s sl_success_rate=%.3f timeout=%s',
                     otp_params['yk_publicname'], self.sync_level, len(self.sync_servers),
                     req_answers, sync_metrics['answers'], sync_metrics['valid_answers'],
                     sync_level_success_rate, self.timeout)
@@ -183,12 +189,16 @@ class Validator:
         if not sync_success:
             # sync returned false, indicating that either at least 1 answer
             # marked OTP as invalid or there were not enough answers
-            logger.error('ykval-verify:notice:Sync failed')
             if sync_metrics['valid_answers'] != sync_metrics['answers']:
+                logger.error('[%(yk_publicname)s] Remote server claims Replayed '
+                             'request (OTP: %(otp)s, Nonce: %(nonce)s)', otp_params)
                 raise YKValError('REPLAYED_OTP')
             else:
-                #self.extra['sl'] = self.sync_level_success_rate
+                logger.error('[%s] Failed to synchronize with %s '
+                             'servers (%s answers, %s valid)', otp_params['yk_publicname'],
+                             req_answers, sync_metrics['answers'], sync_metrics['valid_answers'])
                 raise YKValError('NOT_ENOUGH_ANSWERS')
+        return sync_level_success_rate
 
     def phishing_test(self, otp_params, local_params):
         """ Run a timing phishing test """
@@ -212,15 +222,9 @@ class Validator:
         else:
             percent = 1
         if deviation > TS_ABS_TOLERANCE and percent > TS_REL_TOLERANCE:
-            logger.error('%s: OTP Expired:\n\t' % otp_params['otp'][:-TOKEN_LEN] +
-                         'TOKEN TS OLD: %s\n\t' % datetime.utcfromtimestamp(old_ts) +
-                         'TOKEN TS NEW: %s\n\t' % datetime.utcfromtimestamp(new_ts) +
-                         'TOKEN TS DIFF: %s (sec)\n\t' % ts_delta +
-                         'ACCESS TS OLD: %s\n\t' % datetime.utcfromtimestamp(last_time) +
-                         'ACCESS TS NEW: %s\n\t' % datetime.utcfromtimestamp(now) +
-                         'ACCESS TS DIFF: %s (sec)\n\t' % elapsed +
-                         'DEVIATION: %s (sec) or %s%%' % (deviation, percent))
-            logger.warning('OTP failed phishing test')
+            logger.error('[%s] OTP Expired: TOKEN TS DIFF: %s, '
+                         'ACCESS TS DIFF: %s, DEVIATION: %s (sec) or %s%%',
+                         otp_params['yk_publicname'], ts_delta, elapsed, deviation, percent)
             raise YKValError('DELAYED_OTP')
 
     def verify(self, otp, client_id=None, nonce=None, timestamp=0,
@@ -300,7 +304,7 @@ class Validator:
         # Get old parameters (counters) for the token
         local_params = self.db.get_local_params(otp[:-TOKEN_LEN])
         if not local_params['active']:
-            logger.error('De-activated Yubikey: %(yk_publicname)s', local_params)
+            logger.error('[%(yk_publicname)s]: De-activated Yubikey', local_params)
             raise YKValError('DISABLED_TOKEN')
         # Build the new parameters (counters) for the given OTP
         otp_params = self.build_otp_params(params, otp_info)

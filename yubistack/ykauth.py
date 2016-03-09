@@ -96,7 +96,7 @@ class Client:
         user = self.db.get_user(username)
         if not user:
             raise YKAuthError('UNKNOWN_USER')
-        logger.debug('Found user: %s', user)
+        logger.debug('[%s] Found user: %s', username, user)
         return user
 
     def _check_token(self, user, token_id):
@@ -116,11 +116,13 @@ class Client:
         """
         token = self.db.get_token(user['users_id'], token_id)
         if not token:
-            logger.error('Token %s is not associated with %s', token_id, user['users_name'])
+            logger.error('[%s] Token %s is not associated with user',
+                         user['users_name'], token_id)
             raise YKAuthError('INVALID_TOKEN')
-        logger.debug('Found token: %s', token)
+        logger.debug('[%s] Found token: %s', user['users_name'], token)
         if not token.get('yubikeys_enabled'):
-            logger.error('Token %s is disabled for %s', token_id, user['users_name'])
+            logger.error('[%s] Token %s is disabled for %s',
+                         user['users_name'], token_id, user['users_name'])
             raise YKAuthError('DISABLED_TOKEN')
 
     def _validate_password(self, user, password):
@@ -129,24 +131,12 @@ class Client:
         """
         valid, new_hash = self.pwd_context.verify_and_update(str(password), user['users_auth'])
         if not valid:
-            logger.error('%(users_name)s: Invalid password', user)
+            logger.error('[%(users_name)s] Invalid password', user)
             raise YKAuthError('BAD_PASSWORD')
         if new_hash:
             # TODO: update user's hash with new_hash
-            logger.warning("User %(users_name)s's hash needs update", user)
+            logger.warning('[%(users_name)s] User password hash needs update', user)
         return True
-
-    def _validate_otp(self, otp):
-        """
-        Use Yubico client to validate OTP
-        """
-        try:
-            if self.ykval_client.verify(otp):
-                return True
-            return False
-        except Exception as err:
-            logger.error('OTP Validation failed: %r', err)
-            return False
 
     def authenticate(self, username, password, otp):
         """

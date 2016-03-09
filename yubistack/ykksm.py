@@ -84,13 +84,14 @@ class Decryptor:
         data = self.db.get_key_and_internalname(public_id)
         if not data:
             raise YKKSMError('UNKNOWN_TOKEN')
-        logger.debug('Found user: ID: %s, INTERNALNAME: %s', public_id, data['internalname'])
+        logger.debug('Found user: ID: %s, INTERNALNAME: %s',
+                     public_id, data['internalname'])
         return (data['aeskey'], data['internalname'])
 
     def decrypt(self, otp):
         """ Decrypt OTP """
         if not otp:
-            logger.error('MISSING_OTP')
+            logger.error('Missing OTP')
             raise YKKSMError('MISSING_OTP')
         # Get public_id, modhex, key and internalname
         public_id, modhex = self._parse_otp(otp)
@@ -113,5 +114,5 @@ class Decryptor:
             'high': plaintext[20:22],
             'use': plaintext[22:24]
         }
-        logger.info('SUCCESS OTP %s PT %s %s', otp, plaintext, output)
+        logger.debug('SUCCESS OTP %s PT %s %s', otp, plaintext, output)
         return output

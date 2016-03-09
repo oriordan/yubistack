@@ -2,7 +2,7 @@
 ykval.db
 ~~~~~~~~
 
-Database Handler
+Database Handler & queries
 """
 
 import logging
@@ -54,7 +54,8 @@ class DBHandler:
                 query = query.replace('%s', '?')
             elif '%(' in query and params:
                 query = query.replace('%(', ':').replace(')s', '')
-        logger.debug('QUERY: %s PARAMS: %s', query, params)
+        _query = ' '.join([x.strip() for x in query.split()])
+        logger.debug('QUERY: %s PARAMS: %s', _query, params)
         try:
             rowcount = self.cursor.execute(query, params)
             self._db.commit()
@@ -154,8 +155,8 @@ class DBHandler:
             }
             # Key was missing in DB, adding it
             self.add_new_identity(local_params)
-            logger.warning('Discovered new identity %s', yk_publicname)
-        logger.debug('Auth data: %s', local_params)
+            logger.warning('[%s] Discovered new identity, creating yubikey', yk_publicname)
+        logger.debug('[%s] Auth data: %s', yk_publicname, local_params)
         return local_params
 
     def add_new_identity(self, identity):
