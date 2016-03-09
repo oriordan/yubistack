@@ -121,7 +121,6 @@ class Sync(object):
             logger.debug('Auth data: %s', local_params)
             for server in self.sync_servers:
                 self.db.enqueue(local_params, local_params, server, server_nonce)
-        logger.info('Re-sync request for keys: %s', resync_params['yk'])
         return 'OK Initiated resync of %(yk)s' % resync_params
 
     def _fetch_remote(self, dqueue, server, url, timeout):

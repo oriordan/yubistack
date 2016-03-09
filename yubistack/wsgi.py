@@ -117,14 +117,18 @@ def authenticate(environ, start_response):
         output['latency'] = round(time.time() - start_time, 3)
         output['src_ip'] = environ.get('REMOTE_ADDR')
         response = json.dumps(output if _format == 'json' else (status_code == 200))
+        if status_code == 200:
+            logger_sev = logging.INFO
+            syslog_sev = syslog.LOG_INFO
+        elif status_code == 400:
+            logger_sev = logging.WARNING
+            syslog_sev = syslog.LOG_WARNING
+        else:
+            logger_sev = logging.ERROR
+            syslog_sev = syslog.LOG_ERR
         if settings['SYSLOG_WSGI_AUTH']:
-            if status_code == 200:
-                severity = syslog.LOG_INFO
-            elif status_code == 400:
-                severity = syslog.LOG_WARNING
-            else:
-                severity = syslog.LOG_ERR
-            syslog.syslog(severity, response if _format == 'json' else json.dumps(output))
+            syslog.syslog(syslog_sev, response if _format == 'json' else json.dumps(output))
+        logger.log(logger_sev, '[%(username)s][%(token_id)s] %(status)s: %(message)s', output)
         return [response.encode()]
 
 def decrypt(environ, start_response):
@@ -179,8 +183,8 @@ def verify(environ, start_response):
         client_signature = params.pop('h')
         server_signature = sign(params, apikey)
         if client_signature != server_signature:
-            logger.error('Client hmac=%s != Server hmac=%s',
-                         client_signature, server_signature)
+            logger.error('[%s] Client hmac=%s != Server hmac=%s',
+                         public_id, client_signature, server_signature)
             raise YKValError('BAD_SIGNATURE')
         for old_key, new_key in PARAM_MAP.items():
             if old_key in params:
@@ -188,14 +192,13 @@ def verify(environ, start_response):
                 params.pop(old_key)
         extra = validator.verify(**params)
         output = 'OK'
+        logger.info('[%s] OTP Verified', public_id)
     except YKValError as err:
-        logger.exception('%s: Validation error: %s', public_id, err)
         output = '%s' % err
     except Exception as err:
         logger.exception('%s: Backend error: %s', public_id, err)
         output = 'BACKEND_ERROR'
     finally:
-        logger.info('%s: Verified', public_id)
         return wsgi_response(output, start_response, apikey=apikey, extra=None)
 
 def sync(environ, start_response):
@@ -205,15 +208,15 @@ def sync(environ, start_response):
     local_params = None
     try:
         # Validate caller address
-        logger.debug('Received request from %(REMOTE_ADDR)s', environ)
         if environ['REMOTE_ADDR'] not in settings['SYNC_POOL']:
-            logger.info('Operation not permitted from IP %(REMOTE_ADDR)s', environ)
-            logger.debug('Remote IP %s is not in allowed sync pool: %s',
-                         environ['REMOTE_ADDR'], settings['SYNC_POOL'])
+            logger.error('Operation not permitted from IP %(REMOTE_ADDR)s', environ)
             raise YKSyncError('OPERATION_NOT_ALLOWED',
                               'Remote IP %(REMOTE_ADDR)s it not in sync pool' % environ)
         sync_params = parse_querystring(environ['QUERY_STRING'])
-        logger.info('Received: %s', sync_params)
+        logger.info('[%s] Received sync request from %s (counter: %s, use: %s, nonce: %s)',
+                    sync_params.get('yk_publicname'), environ['REMOTE_ADDR'],
+                    sync_params.get('yk_counter'), sync_params.get('yk_use'),
+                    sync_params.get('nonce'))
         synclib = Sync()
         local_params = synclib.sync_local(sync_params)
         output = 'OK'
@@ -236,13 +239,16 @@ def resync(environ, start_response):
     try:
         # Validate caller address
         if environ['REMOTE_ADDR'] not in settings['SYNC_POOL']:
-            logger.info('Operation not permitted from IP %(REMOTE_ADDR)s', environ)
-            raise YKSyncError('ERROR Authorization failed for %(REMOTE_ADDR)s)' % environ)
+            logger.error('Operation not permitted from IP %(REMOTE_ADDR)s', environ)
+            raise YKSyncError('OPERATION_NOT_ALLOWED',
+                              'Remote IP %(REMOTE_ADDR)s it not in sync pool' % environ)
         # Parse query and check values
         resync_params = parse_querystring(environ['QUERY_STRING'])
         synclib = Sync()
         output = synclib.resync_local(resync_params)
         status_code = 200
+        logger.info('Re-sync request by %s for keys: %s',
+                    environ['REMOTE_ADDR'], resync_params['yk'])
     except YKSyncError as err:
         output = str(err)
         status_code = 401
