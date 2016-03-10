@@ -17,7 +17,6 @@ from .config import (
     settings,
     TS_SEC,
     TS_REL_TOLERANCE,
-    TS_ABS_TOLERANCE,
     TOKEN_LEN,
     OTP_MAX_LEN,
 )
@@ -201,9 +200,18 @@ class Validator:
         return sync_level_success_rate
 
     def phishing_test(self, otp_params, local_params):
-        """ Run a timing phishing test """
-        # Only check token timestamps if it was not plugged out
-        if otp_params['yk_counter'] != local_params['yk_counter']:
+        """
+        Run a test against token's internal timer
+
+        If the token was generated seconds before the login attempt
+        mark the OTP as invalid.
+        """
+        # Only check token timestamps if TS_ABS_TOLERANCE is
+        # set to a proper value or token was not plugged out
+        if (
+                settings['TS_ABS_TOLERANCE'] == 0 or
+                otp_params['yk_counter'] != local_params['yk_counter']
+            ):
             return
         new_ts = (otp_params['yk_high'] << 16) + otp_params['yk_low']
         old_ts = (local_params['yk_high'] << 16) + local_params['yk_low']
@@ -221,7 +229,7 @@ class Validator:
             percent = deviation / elapsed
         else:
             percent = 1
-        if deviation > TS_ABS_TOLERANCE and percent > TS_REL_TOLERANCE:
+        if deviation > settings['TS_ABS_TOLERANCE'] and percent > TS_REL_TOLERANCE:
             logger.error('[%s] OTP Expired: TOKEN TS DIFF: %s, '
                          'ACCESS TS DIFF: %s, DEVIATION: %s (sec) or %s%%',
                          otp_params['yk_publicname'], ts_delta, elapsed, deviation, percent)

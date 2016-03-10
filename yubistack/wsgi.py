@@ -110,10 +110,7 @@ def authenticate(environ, start_response):
         content_type = 'application/json' if _format == 'json' else 'text/plain'
         start_response(HTTP_STATUS_CODES[status_code], [('Content-Type', content_type)])
         output['username'] = params.get('username', '')
-        if len(params.get('otp', '')) >= TOKEN_LEN:
-            output['token_id'] = params['otp'][:-TOKEN_LEN]
-        else:
-            output['token_id'] = ''
+        output['token_id'] = params.get('otp', '')[:-TOKEN_LEN]
         output['latency'] = round(time.time() - start_time, 3)
         output['src_ip'] = environ.get('REMOTE_ADDR')
         response = json.dumps(output if _format == 'json' else (status_code == 200))

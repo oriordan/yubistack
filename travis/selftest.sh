@@ -18,6 +18,7 @@ cat > /tmp/yubistack.conf << EOF
 LOGLEVEL='DEBUG'
 USE_NATIVE_YKVAL = True
 USE_NATIVE_YKKSM = True
+TS_ABS_TOLERANCE = 20
 EOF
 if [ "x$DB" = "xmysql" ]; then
   dbuser=travis

@@ -115,3 +115,16 @@ SYNC_LEVEL = 33
 # validation / synchronization. Normally this will contain the same
 # servers as SYNC_SERVERS, but separating it gives more flexibility.
 SYNC_POOL = ["10.10.10.20", "10.10.10.30"]
+# Log authentication messages to syslog in JSON format
+# This is useful if you have a central log collection
+# system like ElasticSearch
+SYSLOG_WSGI_AUTH = True
+# OTP Timer check which is called as "phishing test" by the official
+# implementation. If the key is not re-plugged, the internal timer
+# values shows you approximately when the token was generated. If
+# the token was generated way before the login attempt, this may be
+# a possibly stolen OTP.
+# Use at your own risk, as timers might turn over or even jump
+# backward in case of faulty keys.
+# Value 0 means this feature is disabled.
+TS_ABS_TOLERANCE = 0

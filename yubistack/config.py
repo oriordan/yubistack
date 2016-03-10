@@ -16,7 +16,6 @@ import logging
 # CONSTANTS
 TS_SEC = 0.128 # 8Hz timer of the HW token
 TS_REL_TOLERANCE = 0.3
-TS_ABS_TOLERANCE = 20 # Tokens will expire after ~20 sec
 TOKEN_LEN = 32 # Lengh of Yubikey OTP tokens
 OTP_MAX_LEN = 48 # TOKEN_LEN plus public identity of 0..16
 
@@ -49,6 +48,7 @@ VALUES = [
     ('SYNC_POOL', []),
     ('SYNC_TIMEOUT', 3),
     ('SYSLOG_WSGI_AUTH', True),
+    ('TS_ABS_TOLERANCE', 0),
 ]
 
 def parse(conf):

@@ -54,8 +54,9 @@ class DBHandler:
                 query = query.replace('%s', '?')
             elif '%(' in query and params:
                 query = query.replace('%(', ':').replace(')s', '')
-        _query = ' '.join([x.strip() for x in query.split()])
-        logger.debug('QUERY: %s PARAMS: %s', _query, params)
+        if logger.getEffectiveLevel() == logging.DEBUG:
+            _query = ' '.join([x.strip() for x in query.split()])
+            logger.debug('QUERY: %s PARAMS: %s', _query, params)
         try:
             rowcount = self.cursor.execute(query, params)
             self._db.commit()
