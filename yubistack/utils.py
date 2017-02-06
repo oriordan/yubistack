@@ -23,11 +23,12 @@ HEX_CHARS = '0123456789abcdef'
 MODHEX_CHARS = 'cbdefghijklnrtuv'
 if sys.version_info < (3,):
     import string
-    MODHEX_TO_HEX_MAP = string.maketrans('cbdefghijklnrtuv', '0123456789abcdef')
-    HEX_TO_MODHEX_MAP = string.maketrans(HEX_CHARS, MODHEX_CHARS)
+    _translate = string.maketrans
 else:
-    MODHEX_TO_HEX_MAP = str.maketrans('cbdefghijklnrtuv', '0123456789abcdef')
-    HEX_TO_MODHEX_MAP = str.maketrans(HEX_CHARS, MODHEX_CHARS)
+    _translate = str.maketrans
+
+MODHEX_TO_HEX_MAP = _translate(MODHEX_CHARS, HEX_CHARS)
+HEX_TO_MODHEX_MAP = _translate(HEX_CHARS, MODHEX_CHARS)
 
 def parse_querystring(query_string):
     """

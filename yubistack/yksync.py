@@ -165,7 +165,8 @@ class Sync(object):
         valid_answers = 0
         for resp in responses:
             resp_params = resp['params']
-            logger.debug('[%(yk_publicname)s] local DB contains %s', otp_params)
+            logger.debug('[%s] local DB contains %s',
+                         otp_params['yk_publicname'], local_params)
             logger.debug('[%s] response contains %s',
                          otp_params['yk_publicname'], resp_params)
             logger.debug('[%s] OTP contains %s',
