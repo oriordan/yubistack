@@ -7,7 +7,7 @@ Helper utilities for Yubikey Validator (YK-VAL)
 
 import base64
 from binascii import hexlify, unhexlify
-from cgi import parse_qs
+from urllib.parse import parse_qs
 from Crypto.Cipher import AES
 from datetime import datetime
 import hashlib
