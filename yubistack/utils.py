@@ -77,8 +77,8 @@ def aes128ecb_decrypt(key, cipher):
     True
     """
     key = unhexlify(key)
-    iv = unhexlify('00000000000000000000000000000000')
-    decryptor = AES.new(key, AES.MODE_ECB, iv)
+    # iv = unhexlify('00000000000000000000000000000000')
+    decryptor = AES.new(key, AES.MODE_ECB)
     cipher = modhex2hex(cipher)
     cipher = unhexlify(cipher)
     plain = decryptor.decrypt(cipher)
@@ -95,8 +95,8 @@ def aes128ecb_encrypt(key, plain):
     True
     """
     key = unhexlify(key)
-    iv = unhexlify('00000000000000000000000000000000')
-    encryptor = AES.new(key, AES.MODE_ECB, iv)
+    # iv = unhexlify('00000000000000000000000000000000')
+    encryptor = AES.new(key, AES.MODE_ECB)
     plain = plain.encode() if not isinstance(plain, bytes) else plain
     plain = unhexlify(plain)
     cipher = encryptor.encrypt(plain)
