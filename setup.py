@@ -3,11 +3,12 @@
 A setuptools based setup module for YubiStack
 """
 
-from setuptools import setup, find_packages
+from setuptools import setup
 from os import path
 import re
 
 here = path.abspath(path.dirname(__file__))
+
 
 def get_version():
     """ Read the current version from __init__.py """
@@ -18,10 +19,12 @@ def get_version():
                 return match.group(1)
         raise RuntimeError("Unable to find version string.")
 
+
 def get_long_description():
     """ Return the content of README """
     with open('README.rst', 'rb') as readmefile:
         return readmefile.read().decode('utf-8')
+
 
 setup(
     name='yubistack',

@@ -30,6 +30,7 @@ else:
 MODHEX_TO_HEX_MAP = _translate(MODHEX_CHARS, HEX_CHARS)
 HEX_TO_MODHEX_MAP = _translate(HEX_CHARS, MODHEX_CHARS)
 
+
 def parse_querystring(query_string):
     """
     Parse request's query string
@@ -40,14 +41,15 @@ def parse_querystring(query_string):
     params = {}
     for key, val in parse_qs(query_string).items():
         if (
-                (val[0] == '0') or
-                (val[0].isdigit() and not val[0].startswith('0')) or
-                (val[0].startswith('-') and val[0][1:].isdigit())
-            ):
+            (val[0] == '0') or
+            (val[0].isdigit() and not val[0].startswith('0')) or
+            (val[0].startswith('-') and val[0][1:].isdigit())
+        ):
             params[key] = int(val[0])
         else:
             params[key] = val[0]
     return params
+
 
 def modhex2hex(modhex):
     """
@@ -58,6 +60,7 @@ def modhex2hex(modhex):
     # Python2 fails to translate unicode
     return str(modhex).translate(MODHEX_TO_HEX_MAP)
 
+
 def hex2modhex(_hex):
     """
     Turn regular hex into modhex
@@ -66,6 +69,7 @@ def hex2modhex(_hex):
     """
     # Python2 fails to translate unicode
     return str(_hex).translate(HEX_TO_MODHEX_MAP)
+
 
 def aes128ecb_decrypt(key, cipher):
     """
@@ -85,6 +89,7 @@ def aes128ecb_decrypt(key, cipher):
     plain = hexlify(plain)
     return plain
 
+
 def aes128ecb_encrypt(key, plain):
     """
     Decrypt ciphertext with key using AES128CBC encryption
@@ -103,6 +108,7 @@ def aes128ecb_encrypt(key, plain):
     cipher = hexlify(cipher)
     cipher = hex2modhex(cipher.decode())
     return cipher
+
 
 def calculate_crc(token):
     """
@@ -125,9 +131,11 @@ def calculate_crc(token):
                 crc = crc ^ 0x8408
     return crc
 
+
 def check_crc(token):
     """ Check the value of the CRC function """
     return calculate_crc(token) == 0xf0b8
+
 
 def sign(data, apikey):
     """
@@ -149,11 +157,13 @@ def sign(data, apikey):
     logger.debug('Signed data: %s (H=%s)', query_string, signature)
     return signature
 
+
 def generate_nonce():
     """
     Generate a random nonce
     """
     return hex(getrandbits(128))[2:-1]
+
 
 def counters_eq(params1, params2):
     """
@@ -166,8 +176,11 @@ def counters_eq(params1, params2):
     >>> counters_eq(p1, p2)
     False
     """
-    return params1['yk_counter'] == params2['yk_counter'] \
+    return (
+        params1['yk_counter'] == params2['yk_counter']
         and params1['yk_use'] == params2['yk_use']
+    )
+
 
 def counters_gt(params1, params2):
     """
@@ -183,9 +196,14 @@ def counters_gt(params1, params2):
     >>> counters_gt(p1, p2)
     True
     """
-    return params1['yk_counter'] > params2['yk_counter'] \
-        or (params1['yk_counter'] == params2['yk_counter'] \
-        and params1['yk_use'] > params2['yk_use'])
+    return (
+        params1['yk_counter'] > params2['yk_counter']
+        or (
+            params1['yk_counter'] == params2['yk_counter']
+            and params1['yk_use'] > params2['yk_use']
+        )
+    )
+
 
 def counters_gte(params1, params2):
     """
@@ -201,9 +219,14 @@ def counters_gte(params1, params2):
     >>> counters_gte(p1, p2)
     True
     """
-    return params1['yk_counter'] > params2['yk_counter'] \
-        or (params1['yk_counter'] == params2['yk_counter'] \
-        and params1['yk_use'] >= params2['yk_use'])
+    return (
+        params1['yk_counter'] > params2['yk_counter']
+        or (
+            params1['yk_counter'] == params2['yk_counter']
+            and params1['yk_use'] >= params2['yk_use']
+        )
+    )
+
 
 SYNC_RESPONSE_CHECKS = {
     'modified': re.compile(r'(-1|\d+)'),
@@ -214,6 +237,8 @@ SYNC_RESPONSE_CHECKS = {
     'yk_low': re.compile(r'(-1|[0-9]+)'),
     'nonce': re.compile(r'[a-zA-Z0-9]+'),
 }
+
+
 def parse_sync_response(sync_response):
     """ Parsing query string parameters into a dict """
     params = [line.split('=', 1) for line in sync_response.split('\r\n') if '=' in line]
@@ -226,6 +251,7 @@ def parse_sync_response(sync_response):
             if params[name].isdigit() or params[name] == '-1':
                 params[name] = int(params[name])
     return params
+
 
 def wsgi_response(resp, start_response, apikey=b'', extra=None, status=200):
     """ Function to return a proper WSGI response """
@@ -248,6 +274,7 @@ def wsgi_response(resp, start_response, apikey=b'', extra=None, status=200):
     logger.debug('Response: %s', response)
     start_response('%d OK' % status, [('Content-Type', 'text/plain')])
     return [response.encode()]
+
 
 if __name__ == '__main__':
     import doctest

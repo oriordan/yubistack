@@ -31,6 +31,7 @@ from .yksync import Sync
 
 logger = logging.getLogger(__name__)
 
+
 class Validator:
     """ Yubikey OTP validator """
     def __init__(self):
@@ -208,10 +209,7 @@ class Validator:
         """
         # Only check token timestamps if TS_ABS_TOLERANCE is
         # set to a proper value or token was not plugged out
-        if (
-                settings['TS_ABS_TOLERANCE'] == 0 or
-                otp_params['yk_counter'] != local_params['yk_counter']
-            ):
+        if settings['TS_ABS_TOLERANCE'] == 0 or otp_params['yk_counter'] != local_params['yk_counter']:
             return
         new_ts = (otp_params['yk_high'] << 16) + otp_params['yk_low']
         old_ts = (local_params['yk_high'] << 16) + local_params['yk_low']

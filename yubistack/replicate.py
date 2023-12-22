@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 requests_log = logging.getLogger('requests')
 requests_log.setLevel(logging.WARNING if logger.getEffectiveLevel() != 10 else logging.DEBUG)
 
+
 def main():
     """
     Main program
@@ -92,6 +93,7 @@ def main():
                 requests.exceptions.ConnectionError) as err:
             logger.error('Failed to connect to server %s: %s', server, err)
             continue
+
 
 if __name__ == '__main__':
     main()

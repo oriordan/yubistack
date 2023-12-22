@@ -28,6 +28,7 @@ CRYPTER = None
 if settings.get('YKKSM_KEYDIR') and PrivateKey:
     CRYPTER = PrivateKey(settings['YKKSM_KEYDIR'])
 
+
 class DecryptorDBH(DBHandler):
     """
     Transparently decrypt RSA encrypted aeskeys

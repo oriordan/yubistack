@@ -30,9 +30,11 @@ STATUS_CODES = {
     'UNKNOWN_TOKEN': 'Unknown yubikey',
 }
 
+
 class YubistackError(Exception):
     """ Yubistack Exception """
     NAME = 'Yubistack error'
+
     def __init__(self, *args):
         super(YubistackError, self).__init__(*args)
         self.error_code = self.args[0]
@@ -43,17 +45,21 @@ class YubistackError(Exception):
             message += ': %s' % self.args[1]
         return message
 
+
 class YKAuthError(YubistackError):
     """ Error returned by the Client class """
     NAME = 'Authentication error'
+
 
 class YKValError(YubistackError):
     """ Error returned by the Validator class """
     NAME = 'Validation error'
 
+
 class YKSyncError(YubistackError):
     """ Error returned by the Sync class """
     NAME = 'Sync error'
+
 
 class YKKSMError(YubistackError):
     """ Error returned by the Decryptor class """

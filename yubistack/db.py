@@ -12,6 +12,7 @@ from .config import settings
 
 logger = logging.getLogger(__name__)
 
+
 class DBHandler:
     """ Database handler wrapper """
     def __init__(self, db):
@@ -74,8 +75,7 @@ class DBHandler:
 
     def _dictfetchall(self):
         """ Wrapper to return DB results in dict format """
-        return [dict(zip([col[0] for col in self.cursor.description], row)) \
-                for row in self.cursor.fetchall()]
+        return [dict(zip([col[0] for col in self.cursor.description], row)) for row in self.cursor.fetchall()]
 
     def _dictfetchone(self):
         """ Wrapper to return DB results in dict format """
