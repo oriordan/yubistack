@@ -1,6 +1,11 @@
 YubiStack
 =========
 
+|Build Status|
+
+.. |Build Status| image:: https://github.com/github/docs/actions/workflows/main.yml/badge.svg?branch=main
+   :target:
+
 YubiStack provides a python re-implementation of:
 
 * `yubiauth <https://github.com/Yubico/yubiauth>`_: Authentication client with a simple user management system
