@@ -1,9 +1,7 @@
 YubiStack
 =========
 
-|Build Status|
-
-.. |Build Status| image:: https://github.com/github/docs/actions/workflows/main.yml/badge.svg?branch=main
+.. image:: https://github.com/timhilliard/yubistack/actions/workflows/main.yml/badge.svg?branch=main
    :target:
 
 YubiStack provides a python re-implementation of:
