@@ -15,20 +15,14 @@ import hmac
 import logging
 from random import getrandbits
 import re
-import sys
 
 logger = logging.getLogger(__name__)
 
 HEX_CHARS = '0123456789abcdef'
 MODHEX_CHARS = 'cbdefghijklnrtuv'
-if sys.version_info < (3,):
-    import string
-    _translate = string.maketrans
-else:
-    _translate = str.maketrans
 
-MODHEX_TO_HEX_MAP = _translate(MODHEX_CHARS, HEX_CHARS)
-HEX_TO_MODHEX_MAP = _translate(HEX_CHARS, MODHEX_CHARS)
+MODHEX_TO_HEX_MAP = str.maketrans(MODHEX_CHARS, HEX_CHARS)
+HEX_TO_MODHEX_MAP = str.maketrans(HEX_CHARS, MODHEX_CHARS)
 
 
 def parse_querystring(query_string):

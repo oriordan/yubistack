@@ -9,7 +9,8 @@ __all__ = [
     'settings',
 ]
 
-import imp
+# import imp
+from importlib import util
 import os
 import logging
 
@@ -61,7 +62,10 @@ def parse(conf):
 
 
 if os.path.isfile(SETTINGS_FILE):
-    user_settings = imp.load_source('user_settings', SETTINGS_FILE)
+    spec = util.spec_from_file_location("user_settings", SETTINGS_FILE)
+    if not spec:
+        raise ImportError("Could not load settings file: %s" % SETTINGS_FILE)
+    user_settings = util.module_from_spec(spec)
     settings = parse(user_settings)
 else:
     settings = dict(VALUES)

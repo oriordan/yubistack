@@ -1,7 +1,8 @@
 YubiStack
 =========
 
-.. image:: https://github.com/timhilliard/yubistack/actions/workflows/main.yml/badge.svg?branch=main
+.. image:: https://github.com/oriordan/yubistack/actions/workflows/main.yml/badge.svg?branch=main
+   :target: https://github.com/oriordan/yubistack/actions/workflows/main.yml?branch=main
 
 YubiStack provides a python re-implementation of:
 
