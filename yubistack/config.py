@@ -9,7 +9,7 @@ __all__ = [
     'settings',
 ]
 
-from importlib import util
+from importlib.machinery import SourceFileLoader
 import os
 import logging
 
@@ -61,10 +61,7 @@ def parse(conf):
 
 
 if os.path.isfile(SETTINGS_FILE):
-    spec = util.spec_from_file_location("user_settings", SETTINGS_FILE)
-    if not spec:
-        raise ImportError("Could not load settings file: %s" % SETTINGS_FILE)
-    user_settings = util.module_from_spec(spec)
+    user_settings = SourceFileLoader("user_settings", SETTINGS_FILE).load_module()
     settings = parse(user_settings)
 else:
     settings = dict(VALUES)
