@@ -37,7 +37,7 @@ setup(
     author_email='oriordan@mail.be',
 
     packages=['yubistack'],
-    install_requires=['passlib', 'pycrypto', 'requests'],
+    install_requires=['passlib', 'pycryptodome', 'requests'],
     keywords='yubikey otp authentication',
     classifiers=[
         'License :: OSI Approved :: BSD License',
