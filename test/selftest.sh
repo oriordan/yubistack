@@ -82,6 +82,8 @@ else
   exit 1
 fi
 
+cat /tmp/yubistack.conf
+
 export YUBISTACK_SETTINGS="/tmp/yubistack.conf"
 $dbrun_ykksm "insert into yubikeys (publicname,internalname,aeskey,serialnr,created,lockcode,creator) values('idkfefrdhtru','609963eae7b5','c68c9df8cbfe7d2f994cb904046c7218',0,0,'','');"
 $dbrun_ykval "insert into clients (id, active, created, secret) values(1, '1', 1383728711, 'EHmo8FMxuhumBlTinC4uYL0Mgwg=');"

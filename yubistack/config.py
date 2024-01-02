@@ -9,7 +9,6 @@ __all__ = [
     'settings',
 ]
 
-# import imp
 from importlib import util
 import os
 import logging
