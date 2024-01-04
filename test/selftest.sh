@@ -23,7 +23,7 @@ EOF
 if [ "x$DB" = "xmysql" ]; then
   dbuser=yubistack
   dbpass=yubistack_pw
-  mysql_cmd="mysql -u $dbuser --password=$dbpass"
+  mysql_cmd="mysql -u $dbuser --password=$dbpass -h 127.0.0.1 -P 3306"
   $mysql_cmd -u $dbuser -e 'create database ykksm;'
   $mysql_cmd -u $dbuser ykksm < ykksm-db.sql
   dbrun_ykksm="$mysql_cmd ykksm -e"
