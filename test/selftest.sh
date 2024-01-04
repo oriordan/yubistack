@@ -54,7 +54,7 @@ elif [ "x$DB" = "xpgsql" ]; then
   dbrun_ykval="$psql_cmd ykval -c"
   $psql_cmd -c 'create database yubiauth;'
   $psql_cmd yubiauth < yubiauth-db.sql
-  dbrun_yubiauth="psql -U $dbuser yubiauth -c"
+  dbrun_yubiauth="$psql_cmd yubiauth -c"
 cat >> /tmp/yubistack.conf << EOF
 DATABASES = {
   'ykksm': {'ENGINE': 'postgres', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '$dbpass', 'NAME': 'ykksm'},
