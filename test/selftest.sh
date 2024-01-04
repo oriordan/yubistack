@@ -44,7 +44,8 @@ EOF
 elif [ "x$DB" = "xpgsql" ]; then
   dbuser=yubistack
   dbpass=yubistack_pw
-  psql_cmd="PGPASSWORD=$dbpass psql -U $dbuser"
+  export PGPASSWORD=$dbpass
+  psql_cmd="psql -U $dbuser"
   $psql_cmd -c 'create database ykksm;'
   $psql_cmd ykksm < ykksm-db.sql
   dbrun_ykksm="$psql_cmd ykksm -c"
