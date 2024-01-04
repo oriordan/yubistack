@@ -36,8 +36,8 @@ jobs:
       if: matrix.db == 'pgsql'
     - name: Install PostgreSQL Client
       run: |
-        apt-get update
-        apt-get install --yes --no-install-recommends postgresql-client
+        sudo apt-get update
+        sudo apt-get install --yes --no-install-recommends postgresql-client
       if: matrix.db == 'pgsql'
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
