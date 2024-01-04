@@ -21,8 +21,8 @@ USE_NATIVE_YKKSM = True
 TS_ABS_TOLERANCE = 20
 EOF
 if [ "x$DB" = "xmysql" ]; then
-  dbuser=yubistack
-  dbpass=yubistack_pw
+  dbuser=root
+  dbpass=root_pw
   mysql_cmd="mysql -u $dbuser --password=$dbpass -h 127.0.0.1 -P 3306"
   $mysql_cmd -u $dbuser -e 'create database ykksm;'
   $mysql_cmd -u $dbuser ykksm < ykksm-db.sql
