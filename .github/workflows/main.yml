@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
-        db: ["sqlite", "mysql", "postgresql"]
+        db: ["sqlite", "mysql", "postgres"]
 
     steps:
     - name: Shutdown Ubuntu MySQL (SUDO)
@@ -33,7 +33,7 @@ jobs:
       with:
         postgresql user: 'yubistack'
         postgresql password: 'yubistack_pw'
-      if: matrix.db == 'postgresql'
+      if: matrix.db == 'postgres'
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5

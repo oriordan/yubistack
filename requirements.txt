@@ -1,3 +1,5 @@
 passlib
 pycryptodome
 requests
+mysqlclient
+psycopg2
