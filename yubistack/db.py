@@ -38,7 +38,7 @@ class DBHandler:
                                              self.settings['USER'],
                                              self.settings['PASSWORD'],
                                              self.settings['NAME'],
-                                             self.settings.get('PORT', 3306))
+                                             int(self.settings.get('PORT', 3306)))
         elif self.settings['ENGINE'] == 'postgres':
             self._db = self.dbdriver.connect(database=self.settings['NAME'],
                                              user=self.settings['USER'],
