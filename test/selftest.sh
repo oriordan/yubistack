@@ -21,40 +21,44 @@ USE_NATIVE_YKKSM = True
 TS_ABS_TOLERANCE = 20
 EOF
 if [ "x$DB" = "xmysql" ]; then
-  dbuser=travis
-  mysql -u $dbuser -e 'create database ykksm;'
-  mysql -u $dbuser ykksm < ykksm-db.sql
-  dbrun_ykksm="mysql -u $dbuser ykksm -e"
-  mysql -u $dbuser -e 'create database ykval;'
-  mysql -u $dbuser ykval < ykval-db.sql
-  dbrun_ykval="mysql -u $dbuser ykval -e"
-  mysql -u $dbuser -e 'create database yubiauth;'
-  mysql -u $dbuser yubiauth < yubiauth-db.sql
-  dbrun_yubiauth="mysql -u $dbuser yubiauth -e"
+  dbuser=yubistack
+  dbpass=yubistack_pw
+  mysql_cmd="mysql -u $dbuser --password=$dbpass"
+  $mysql_cmd -u $dbuser -e 'create database ykksm;'
+  $mysql_cmd -u $dbuser ykksm < ykksm-db.sql
+  dbrun_ykksm="$mysql_cmd ykksm -e"
+  $mysql_cmd -u $dbuser -e 'create database ykval;'
+  $mysql_cmd -u $dbuser ykval < ykval-db.sql
+  dbrun_ykval="$mysql_cmd ykval -e"
+  $mysql_cmd -u $dbuser -e 'create database yubiauth;'
+  $mysql_cmd -u $dbuser yubiauth < yubiauth-db.sql
+  dbrun_yubiauth="$mysql_cmd yubiauth -e"
 cat >> /tmp/yubistack.conf << EOF
 DATABASES = {
-  'ykksm': {'ENGINE': 'mysql', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': 'ykksm'},
-  'ykval': {'ENGINE': 'mysql', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': 'ykval'},
-  'yubiauth': {'ENGINE': 'mysql', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': 'yubiauth'},
+  'ykksm': {'ENGINE': 'mysql', 'HOST': '127.0.0.1', 'PORT': '3306', 'USER': '$dbuser', 'PASSWORD': '$dbpass', 'NAME': 'ykksm'},
+  'ykval': {'ENGINE': 'mysql', 'HOST': '127.0.0.1', 'PORT': '3306', 'USER': '$dbuser', 'PASSWORD': '$dbpass', 'NAME': 'ykval'},
+  'yubiauth': {'ENGINE': 'mysql', 'HOST': '127.0.0.1', 'PORT': '3306', 'USER': '$dbuser', 'PASSWORD': '$dbpass', 'NAME': 'yubiauth'},
 }
 EOF
 
 elif [ "x$DB" = "xpgsql" ]; then
-  dbuser=postgres
-  psql -U $dbuser -c 'create database ykksm;'
-  psql -U $dbuser ykksm < ykksm-db.sql
-  dbrun_ykksm="psql -U $dbuser ykksm -c"
-  psql -U $dbuser -c 'create database ykval;'
-  psql -U $dbuser ykval < ykval-db.sql
-  dbrun_ykval="psql -U $dbuser ykval -c"
-  psql -U $dbuser -c 'create database yubiauth;'
-  psql -U $dbuser yubiauth < yubiauth-db.sql
+  dbuser=yubistack
+  dbpass=yubistack_pw
+  psql_cmd="PGPASSWORD=$dbpass psql -U $dbuser"
+  $psql_cmd -c 'create database ykksm;'
+  $psql_cmd ykksm < ykksm-db.sql
+  dbrun_ykksm="$psql_cmd ykksm -c"
+  $psql_cmd -c 'create database ykval;'
+  $psql_cmd ykval < ykval-db.sql
+  dbrun_ykval="$psql_cmd ykval -c"
+  $psql_cmd -c 'create database yubiauth;'
+  $psql_cmd yubiauth < yubiauth-db.sql
   dbrun_yubiauth="psql -U $dbuser yubiauth -c"
 cat >> /tmp/yubistack.conf << EOF
 DATABASES = {
-  'ykksm': {'ENGINE': 'postgres', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': 'ykksm'},
-  'ykval': {'ENGINE': 'postgres', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': 'ykval'},
-  'yubiauth': {'ENGINE': 'postgres', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '', 'NAME': 'yubiauth'},
+  'ykksm': {'ENGINE': 'postgres', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '$dbpass', 'NAME': 'ykksm'},
+  'ykval': {'ENGINE': 'postgres', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '$dbpass', 'NAME': 'ykval'},
+  'yubiauth': {'ENGINE': 'postgres', 'HOST': '127.0.0.1', 'USER': '$dbuser', 'PASSWORD': '$dbpass', 'NAME': 'yubiauth'},
 }
 EOF
 
