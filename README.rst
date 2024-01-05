@@ -1,7 +1,7 @@
 YubiKit
 =========
 
-This is a fork of `yubistack <https://github.com/oriordan/yubistack>`
+This is a fork of `yubistack <https://github.com/oriordan/yubistack>`_
 
 .. image:: https://github.com/timhilliard/yubikit/actions/workflows/main.yml/badge.svg?branch=main
    :target: https://github.com/timhilliard/yubikit/actions/workflows/main.yml?branch=main
