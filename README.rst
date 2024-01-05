@@ -1,8 +1,10 @@
-YubiStack
+YubiKit
 =========
 
-.. image:: https://github.com/timhilliard/yubistack/actions/workflows/main.yml/badge.svg?branch=main
-   :target: https://github.com/timhilliard/yubistack/actions/workflows/main.yml?branch=main
+This is a fork of `yubistack <https://github.com/oriordan/yubistack>`
+
+.. image:: https://github.com/timhilliard/yubikit/actions/workflows/main.yml/badge.svg?branch=main
+   :target: https://github.com/timhilliard/yubikit/actions/workflows/main.yml?branch=main
 
 YubiStack provides a python re-implementation of:
 
@@ -19,7 +21,7 @@ To install yubistak, simply:
 
 .. code-block:: bash
 
-    $ sudo pip install yubistack
+    $ sudo pip install yubikit
 
 Configuration
 -------------
