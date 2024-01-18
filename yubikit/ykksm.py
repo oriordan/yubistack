@@ -1,5 +1,5 @@
 """
-yubistack.ykksm
+yubikit.ykksm
 ~~~~~~~~~~~~~~~
 
 Yubikey Key Storage Manager - Decryption module

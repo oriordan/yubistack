@@ -9,18 +9,18 @@ Components:
     ykksm: Key Storage Module
 
 Examples:
->>> from yubistack import Client
+>>> from yubikit import Client
 >>> c = Client()
 >>> c.authenticate('joe', 'secret', 'ccccccbcgujhingjrdejhgfnuetrgigvejhhgbkugded')
 False
 >>>
->>> from yubistack import Validator
+>>> from yubikit import Validator
 >>> v = Validator()
 >>> v.verify(1, 'ccccccbcgujhingjrdejhgfnuetrgigvejhhgbkugded')
 {'otp': 'ccccccbcgujhingjrdejhgfnuetrgigvejhhgbkugded', 'time': '2015-04-14T20:07:20Z5261', \
  'nonce': None, 'status': 'OK', 'sl': None, 'signature': 'h0P2wfJUqHQFuRpG4n1Kvk3KacE='}
 >>>
->>> from yubistack import Decryptor
+>>> from yubikit import Decryptor
 >>> d = Decryptor()
 >>> d.decrypt('ccccccbcgujhingjrdejhgfnuetrgigvejhhgbkugded')
 {'counter': '0235', 'low':' 21c4', 'high': 'b2', 'use':'42'}

@@ -1,6 +1,6 @@
 """
 
-yubistack.exceptions
+yubikit.exceptions
 ~~~~~~~~~~~~~~~~~~~~
 
 List all custom exceptions here
@@ -31,12 +31,12 @@ STATUS_CODES = {
 }
 
 
-class YubistackError(Exception):
-    """ Yubistack Exception """
-    NAME = 'Yubistack error'
+class YubiKitError(Exception):
+    """ YubiKit Exception """
+    NAME = 'YubiKit error'
 
     def __init__(self, *args):
-        super(YubistackError, self).__init__(*args)
+        super(YubiKitError, self).__init__(*args)
         self.error_code = self.args[0]
 
     def __str__(self):
@@ -46,21 +46,21 @@ class YubistackError(Exception):
         return message
 
 
-class YKAuthError(YubistackError):
+class YKAuthError(YubiKitError):
     """ Error returned by the Client class """
     NAME = 'Authentication error'
 
 
-class YKValError(YubistackError):
+class YKValError(YubiKitError):
     """ Error returned by the Validator class """
     NAME = 'Validation error'
 
 
-class YKSyncError(YubistackError):
+class YKSyncError(YubiKitError):
     """ Error returned by the Sync class """
     NAME = 'Sync error'
 
 
-class YKKSMError(YubistackError):
+class YKKSMError(YubiKitError):
     """ Error returned by the Decryptor class """
     NAME = 'Decryption error'

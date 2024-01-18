@@ -1,5 +1,5 @@
 """
-yubistack.replicate
+yubikit.replicate
 ~~~~~~~~~~~~~~~~~~~
 
 Script to run through the queue and ensure
@@ -10,13 +10,13 @@ import logging
 
 import requests
 
-from yubistack.utils import (
+from yubikit.utils import (
     counters_eq,
     counters_gt,
     parse_querystring,
     parse_sync_response,
 )
-from yubistack.ykval import Sync
+from yubikit.ykval import Sync
 
 logger = logging.getLogger(__name__)
 requests_log = logging.getLogger('requests')

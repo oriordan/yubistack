@@ -26,13 +26,13 @@ jobs:
     - uses: mirromutth/mysql-action@v1.1
       with:
         mysql root password: 'root_pw' # Required if "mysql user" is empty, default is empty. The root superuser password
-        mysql user: 'yubistack' # Required if "mysql root password" is empty, default is empty. The superuser for the specified database. Can use secrets, too
-        mysql password: 'yubistack_pw' # Required if "mysql user" exists. The password for the "mysql user"
+        mysql user: 'yubikit' # Required if "mysql root password" is empty, default is empty. The superuser for the specified database. Can use secrets, too
+        mysql password: 'yubikit_pw' # Required if "mysql user" exists. The password for the "mysql user"
       if: matrix.db == 'mysql'
     - uses: harmon758/postgresql-action@v1
       with:
-        postgresql user: 'yubistack'
-        postgresql password: 'yubistack_pw'
+        postgresql user: 'yubikit'
+        postgresql password: 'yubikit_pw'
       if: matrix.db == 'pgsql'
     - name: Install PostgreSQL Client
       run: |
@@ -53,7 +53,7 @@ jobs:
         python -m pip install flake8 pytest
     - name: Lint with flake8
       run: |
-        flake8 yubistack --config yubistack/setup.cfg
+        flake8 yubikit --config yubikit/setup.cfg
     - name: Test with existing test
       env:
         DB: ${{ matrix.db }}

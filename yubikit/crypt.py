@@ -79,7 +79,7 @@ directory first:
 now you can split the secret used to protect 2.private using the secret
 command:
 
-  ~$ python yubistack/crypt.py secret
+  ~$ python yubikit/crypt.py secret
 
 '''
 

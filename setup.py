@@ -1,6 +1,6 @@
 #!/usr/bin/python
 """
-A setuptools based setup module for YubiStack
+A setuptools based setup module for YubiKit
 """
 
 from setuptools import setup
@@ -12,7 +12,7 @@ here = path.abspath(path.dirname(__file__))
 
 def get_version():
     """ Read the current version from __init__.py """
-    with open('yubistack/__init__.py', 'rb') as initfile:
+    with open('yubikit/__init__.py', 'rb') as initfile:
         for line in initfile.readlines():
             match = re.match(r"^__version__\s*=\s*['\"](.+)['\"]$", line.decode('utf-8'))
             if match:
@@ -27,16 +27,16 @@ def get_long_description():
 
 
 setup(
-    name='yubistack',
+    name='yubikit',
     version=get_version(),
-    description='YubiStack implementation',
+    description='Yubikit implementation',
     long_description=get_long_description(),
-    url='https://github.com/oriordan/yubistack',
+    url='https://github.com/timhilliard/yubikit',
     license='BSD 2 clause',
     author="Doug O'Riordan",
     author_email='oriordan@mail.be',
 
-    packages=['yubistack'],
+    packages=['yubikit'],
     install_requires=['passlib', 'pycryptodome', 'requests'],
     keywords='yubikey otp authentication',
     classifiers=[

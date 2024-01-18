@@ -1,5 +1,5 @@
 """
-yubistack.softtoken
+yubikit.softtoken
 ~~~~~~~~~~~~~~~~~~~
 
 Generating OTP with code o/
