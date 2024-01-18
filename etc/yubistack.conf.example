@@ -1,13 +1,13 @@
 ########################################
 #
-# Example yubistack configuration file
+# Example yubikit configuration file
 #
 # This config contains Python code, and
 # will be imported as python module.
 #
 ########################################
 LOGLEVEL = 'DEBUG'
-LOGFILE = '/var/log/yubistack.log'
+LOGFILE = '/var/log/yubikit.log'
 
 # Database configuration
 # 
@@ -20,19 +20,19 @@ LOGFILE = '/var/log/yubistack.log'
 #    'yubiauth': {
 #        'ENGINE': 'mysql',
 #        'HOST': 'database.example.com',
-#        'USER': 'yubistack_auth',
-#        'PASSWORD': 'secret_yubistack_password',
+#        'USER': 'yubikit_auth',
+#        'PASSWORD': 'secret_yubikit_password',
 #        'NAME': 'yubiauth',
 #    },
 #    'ykval': {
 #        'ENGINE': 'sqlite',
-#        'NAME': '/usr/local/yubistack/ykval.sqlite',
+#        'NAME': '/usr/local/yubikit/ykval.sqlite',
 #    },
 #    'ykksm': {
 #        'ENGINE': 'postgres',
 #        'HOST': 'database.example.com',
-#        'USER': 'yubistack_ksm',
-#        'PASSWORD': 'secret_yubistack_password',
+#        'USER': 'yubikit_ksm',
+#        'PASSWORD': 'secret_yubikit_password',
 #        'NAME': 'ykksm',
 #    }
 # }
@@ -40,22 +40,22 @@ DATABASES = {
     'yubiauth': {
         'ENGINE': 'mysql',
         'HOST': 'database.example.com',
-        'USER': 'yubistack_auth',
-        'PASSWORD': 'secret_yubistack_password',
+        'USER': 'yubikit_auth',
+        'PASSWORD': 'secret_yubikit_password',
         'NAME': 'yubiauth',
     },
     'ykval': {
         'ENGINE': 'mysql',
         'HOST': 'database.example.com',
-        'USER': 'yubistack_val',
-        'PASSWORD': 'secret_yubistack_password',
+        'USER': 'yubikit_val',
+        'PASSWORD': 'secret_yubikit_password',
         'NAME': 'ykval',
     },
     'ykksm': {
         'ENGINE': 'mysql',
         'HOST': 'database.example.com',
-        'USER': 'yubistack_ksm',
-        'PASSWORD': 'secret_yubistack_password',
+        'USER': 'yubikit_ksm',
+        'PASSWORD': 'secret_yubikit_password',
         'NAME': 'ykksm',
     }
 }

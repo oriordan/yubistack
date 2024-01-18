@@ -1,5 +1,5 @@
 """
-yubistack.ykval
+yubikit.ykval
 ~~~~~~~~~~~~~~~
 
 Python Yubikey Stack - Key validation module

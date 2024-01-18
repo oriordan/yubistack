@@ -1,5 +1,5 @@
 """
-yubistack.config
+yubikit.config
 ~~~~~~~~~~~~~~~~
 
 Settings file parser module
@@ -19,7 +19,7 @@ TS_REL_TOLERANCE = 0.3
 TOKEN_LEN = 32  # Lengh of Yubikey OTP tokens
 OTP_MAX_LEN = 48  # TOKEN_LEN plus public identity of 0..16
 
-SETTINGS_FILE = os.getenv('YUBISTACK_SETTINGS', '/etc/yubistack.conf')
+SETTINGS_FILE = os.getenv('YUBIKIT_SETTINGS', '/etc/yubikit.conf')
 DEFAULT_CRYPT_CONTEXT = {
     'schemes': ['sha256_crypt'],
     'deprecated': [],
@@ -42,7 +42,7 @@ VALUES = [
     ('YKKSM_SERVERS', []),
     ('YKKSM_KEYDIR', False),
     ('LOGLEVEL', 'INFO'),
-    ('LOGFILE', '/tmp/yubistack.log'),
+    ('LOGFILE', '/tmp/yubikit.log'),
     ('SYNC_SERVERS', []),
     ('SYNC_LEVEL', 100),
     ('SYNC_POOL', []),

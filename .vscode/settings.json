@@ -3,6 +3,6 @@
         "${workspaceFolder}/venv/bin/flake8"
     ],
     "flake8.args": [
-        "--config ${workspaceFolder}/yubistack/setup.cfg"
+        "--config ${workspaceFolder}/yubikit/setup.cfg"
     ]
 }

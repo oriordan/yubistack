@@ -1,8 +1,8 @@
 """
-yubistack.wsgi
+yubikit.wsgi
 ~~~~~~~~~~~~~~
 
-WSGI wrappers around the yubistack functions
+WSGI wrappers around the yubikit functions
 to support backward compatibility.
 """
 
@@ -11,29 +11,29 @@ import logging
 import re
 import time
 
-from yubistack.config import (
+from yubikit.config import (
     settings,
     TOKEN_LEN
 )
-from yubistack.exceptions import (
+from yubikit.exceptions import (
     YKAuthError,
     YKValError,
     YKSyncError,
     YKKSMError,
 )
-from yubistack.utils import (
+from yubikit.utils import (
     parse_querystring,
     wsgi_response,
     sign,
 )
-from yubistack.ykauth import Client
-from yubistack.ykksm import Decryptor
-from yubistack.yksync import Sync
-from yubistack.ykval import Validator
+from yubikit.ykauth import Client
+from yubikit.ykksm import Decryptor
+from yubikit.yksync import Sync
+from yubikit.ykval import Validator
 
 if settings['SYSLOG_WSGI_AUTH']:
     import syslog
-    syslog.openlog(ident='yubistack', facility=syslog.LOG_AUTH)
+    syslog.openlog(ident='yubikit', facility=syslog.LOG_AUTH)
 
 logger = logging.getLogger(__name__)
 

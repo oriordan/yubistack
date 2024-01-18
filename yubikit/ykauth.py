@@ -1,5 +1,5 @@
 """
-yubistack.ykauth
+yubikit.ykauth
 ~~~~~~~~~~~~~~~~
 
 Python Yubikey Stack - Authentication module
@@ -140,7 +140,7 @@ class Client:
 
     def authenticate(self, username, password, otp):
         """
-        Yubistack user authentication
+        Yubikit user authentication
 
         Args:
             username: Username of the user
