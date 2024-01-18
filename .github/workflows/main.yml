@@ -23,13 +23,15 @@ jobs:
     - name: Shutdown Ubuntu MySQL (SUDO)
       run: sudo service mysql stop # Shutdown the Default MySQL, "sudo" is necessary, please do not remove it
       if: matrix.db == 'mysql'
-    - uses: mirromutth/mysql-action@v1.1
+    - name: Run MySQL docker container
+      uses: mirromutth/mysql-action@v1.1
       with:
         mysql root password: 'root_pw' # Required if "mysql user" is empty, default is empty. The root superuser password
         mysql user: 'yubikit' # Required if "mysql root password" is empty, default is empty. The superuser for the specified database. Can use secrets, too
         mysql password: 'yubikit_pw' # Required if "mysql user" exists. The password for the "mysql user"
       if: matrix.db == 'mysql'
-    - uses: harmon758/postgresql-action@v1
+    - name: Run PostgreSQL docker container
+      uses: harmon758/postgresql-action@v1
       with:
         postgresql user: 'yubikit'
         postgresql password: 'yubikit_pw'
@@ -39,7 +41,8 @@ jobs:
         sudo apt-get update
         sudo apt-get install --yes --no-install-recommends postgresql-client
       if: matrix.db == 'pgsql'
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
