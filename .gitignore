@@ -4,3 +4,4 @@ yubikit.egg-info
 *.pyc
 build
 venv
+.mypy_cache

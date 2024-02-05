@@ -7,7 +7,6 @@ on:
   push:
     branches: [ "main" ]
   pull_request:
-    types: [opened, reopened]
 
 jobs:
   build:
@@ -16,8 +15,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
         db: ["sqlite", "mysql", "pgsql"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        tox: [""]
+        include:
+          - db: "sqlite"
+            python-version: '3.9'
+            tox: style
+          # - db: "sqlite"
+          #   python-version: '3.9'
+          #   tox: typing
 
     steps:
     - name: Shutdown Ubuntu MySQL (SUDO)
@@ -52,11 +59,16 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install -r requirements.txt
-        python -m pip install flake8 pytest
-    - name: Lint with flake8
+        python -m pip install -r requirements/core.txt
+        python -m pip install -r requirements/test.txt
+        python -m pip install tox
+    - name: Generate Tox version
+      id: tox
       run: |
-        flake8 yubikit --config yubikit/setup.cfg
+        echo "tox=$(test/tox-version.sh ${{ matrix.python-version }} ${{ matrix.tox }})" >> $GITHUB_OUTPUT
+    - name: Run Tox
+      run: |
+        tox -e ${{ steps.tox.outputs.tox }}
     - name: Test with existing test
       env:
         DB: ${{ matrix.db }}

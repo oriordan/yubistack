@@ -20,38 +20,7 @@ from Crypto.Cipher import DES, DES3, AES, PKCS1_OAEP
 from Crypto.Hash import MD5
 from Crypto.Protocol.KDF import PBKDF1
 from Crypto.PublicKey import RSA
-
-# Older versions of PyCrypto don't skip pad/unpad, we only care about the
-# PKCS#7 variants here.
-try:
-    from Crypto.Util.Padding import pad, unpad
-except ImportError:
-    def pad(data, block_size):
-        """Pad a block of data to align with block_size using PKCS#7 padding."""
-        return data + chr(len(data)) * ((block_size - len(data)) % block_size)
-
-    def unpad(data, block_size):
-        """Remove block padding from PKCS#7 padding."""
-        if len(data) % block_size:
-            raise ValueError('Input data is not padded')
-
-        if isinstance(data[-1], int):
-            pad_len = data[-1]
-        else:
-            pad_len = ord(data[-1])
-
-        if pad_len < 1 or pad_len > min(block_size, len(data)):
-            raise ValueError('Incorrect padding')
-
-        padding = chr(pad_len) * pad_len
-        if isinstance(data, bytes):
-            padding = padding.encode('ascii')
-
-        if data[-pad_len:] != padding:
-            raise ValueError('PKCS#7 padding incorrect')
-
-        else:
-            return data[:-pad_len]
+from Crypto.Util.Padding import unpad
 
 
 logger = logging.getLogger(__name__)

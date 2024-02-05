@@ -1,0 +1,109 @@
+[project]
+name = "yubikit"
+dynamic = ["version"]
+description = "A toolkit for interacting with Yubico OTPs"
+readme = "README.rst"
+license = {file = "LICENSE"}
+maintainers = [{name = "Tim Hilliard", email = "timhilliard@gmail.com"}]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Framework :: Flask",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security :: Cryptography",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "pycryptodome",
+    "requests",
+]
+
+[project.urls]
+"Source Code" = "https://github.com/timhilliard/yubikit"
+"Issue Tracker" = "https://github.com/timhilliard/yubikit/issues/"
+
+[project.optional-dependencies]
+psycopg2 = ["psycopg2"]
+mysqlclient = ["mysqlclient"]
+
+[project.scripts]
+flask = "flask.cli:main"
+
+[build-system]
+requires = ["flit_core<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.module]
+name = "yubikit"
+
+[tool.flit.sdist]
+include = [
+    "requirements/",
+    "tests/",
+    "tox.ini",
+]
+exclude = [
+    "docs/_build/",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    "error",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["yubikit", "tests"]
+
+[tool.coverage.paths]
+source = ["yubikit", "*/site-packages"]
+
+[tool.mypy]
+python_version = "3.8"
+files = ["yubikit", "tests/typing"]
+show_error_codes = true
+pretty = true
+strict = true
+
+[[tool.mypy.overrides]]
+module = [
+    "cryptography.*",
+    "importlib_metadata",
+]
+ignore_missing_imports = true
+
+[tool.ruff]
+src = ["src"]
+fix = true
+show-fixes = true
+show-source = true
+
+[tool.ruff.lint]
+select = [
+    "B",  # flake8-bugbear
+    "E",  # pycodestyle error
+    "F",  # pyflakes
+    "I",  # isort
+    "UP",  # pyupgrade
+    "W",  # pycodestyle warning
+]
+ignore-init-module-imports = true
+
+[tool.ruff.lint.isort]
+force-single-line = true
+order-by-type = false

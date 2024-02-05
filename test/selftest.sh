@@ -24,14 +24,14 @@ if [ "x$DB" = "xmysql" ]; then
   dbuser=root
   dbpass=root_pw
   mysql_cmd="mysql -u $dbuser --password=$dbpass -h 127.0.0.1 -P 3306"
-  $mysql_cmd -u $dbuser -e 'create database ykksm;'
-  $mysql_cmd -u $dbuser ykksm < ykksm-db.sql
+  $mysql_cmd -e 'create database ykksm;'
+  $mysql_cmd ykksm < test/ykksm-db.sql
   dbrun_ykksm="$mysql_cmd ykksm -e"
-  $mysql_cmd -u $dbuser -e 'create database ykval;'
-  $mysql_cmd -u $dbuser ykval < ykval-db.sql
+  $mysql_cmd -e 'create database ykval;'
+  $mysql_cmd ykval < test/ykval-db.sql
   dbrun_ykval="$mysql_cmd ykval -e"
-  $mysql_cmd -u $dbuser -e 'create database yubiauth;'
-  $mysql_cmd -u $dbuser yubiauth < yubiauth-db.sql
+  $mysql_cmd -e 'create database yubiauth;'
+  $mysql_cmd yubiauth < test/yubiauth-db.sql
   dbrun_yubiauth="$mysql_cmd yubiauth -e"
 cat >> /tmp/yubikit.conf << EOF
 DATABASES = {
@@ -47,13 +47,13 @@ elif [ "x$DB" = "xpgsql" ]; then
   export PGPASSWORD=$dbpass
   psql_cmd="psql -U $dbuser -h 127.0.0.1 -p 5432"
   $psql_cmd -c 'create database ykksm;'
-  $psql_cmd ykksm < ykksm-db.sql
+  $psql_cmd ykksm < test/ykksm-db.sql
   dbrun_ykksm="$psql_cmd ykksm -c"
   $psql_cmd -c 'create database ykval;'
-  $psql_cmd ykval < ykval-db.sql
+  $psql_cmd ykval < test/ykval-db.sql
   dbrun_ykval="$psql_cmd ykval -c"
   $psql_cmd -c 'create database yubiauth;'
-  $psql_cmd yubiauth < yubiauth-db.sql
+  $psql_cmd yubiauth < test/yubiauth-db.sql
   dbrun_yubiauth="$psql_cmd yubiauth -c"
 cat >> /tmp/yubikit.conf << EOF
 DATABASES = {
@@ -68,12 +68,12 @@ elif [ "x$DB" = "xsqlite" ]; then
   dbfile_ykksm=`mktemp --suffix .yubikit`
   dbfile_ykval=`mktemp --suffix .yubikit`
   dbfile_yubiauth=`mktemp --suffix .yubikit`
-  sqlite3 $dbfile_ykksm < ykksm-db.sql
-  sqlite3 $dbfile_ykval < ykval-db.sql
-  sqlite3 $dbfile_yubiauth < yubiauth-db.sql
   dbrun_ykksm="sqlite3 $dbfile_ykksm"
   dbrun_ykval="sqlite3 $dbfile_ykval"
   dbrun_yubiauth="sqlite3 $dbfile_yubiauth"
+  $dbrun_ykksm < test/ykksm-db.sql
+  $dbrun_ykval < test/ykval-db.sql
+  $dbrun_yubiauth < test/yubiauth-db.sql
 cat >> /tmp/yubikit.conf << EOF
 DATABASES = {
   'ykksm': {'ENGINE': 'sqlite', 'NAME': '$dbfile_ykksm'},
@@ -90,6 +90,8 @@ fi
 cat /tmp/yubikit.conf
 
 export YUBIKIT_SETTINGS="/tmp/yubikit.conf"
+
+echo "Insert test data"
 $dbrun_ykksm "insert into yubikeys (publicname,internalname,aeskey,serialnr,created,lockcode,creator) values('idkfefrdhtru','609963eae7b5','c68c9df8cbfe7d2f994cb904046c7218',0,0,'','');"
 $dbrun_ykval "insert into clients (id, active, created, secret) values(1, '1', 1383728711, 'EHmo8FMxuhumBlTinC4uYL0Mgwg=');"
 $dbrun_yubiauth "insert into users (id, name, auth) values(1, 'test', '\$5\$rounds=510308\$HGI8sEFyUgh9GQhx\$y7zXOdPTC65ee1aNHU7lX2QnZw2SPN0Ag7RSpdb4aj9');"

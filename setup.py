@@ -37,10 +37,10 @@ setup(
     author_email='oriordan@mail.be',
 
     packages=['yubikit'],
-    install_requires=['passlib', 'pycryptodome', 'requests'],
+    install_requires=['pycryptodome', 'requests'],
     keywords='yubikey otp authentication',
     classifiers=[
-        'License :: OSI Approved :: BSD License',
+        'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Development Status :: 4 - Beta',

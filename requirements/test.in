@@ -1,0 +1,8 @@
+coverage
+pytest
+pytest-cov
+flake8
+coverage
+tox
+mysqlclient
+psycopg2
