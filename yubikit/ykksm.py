@@ -99,7 +99,6 @@ class Decryptor:
         aeskey, internalname = self._get_key_and_internalname(public_id)
         # Get plaintext from key + modhexed cipher
         plaintext = aes128ecb_decrypt(aeskey, modhex)
-        plaintext = plaintext.decode()
         # Check for plaintext corruption
         if plaintext[:12] != internalname:
             logger.error('UID Error: %s %s: %s vs %s',

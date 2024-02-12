@@ -34,7 +34,7 @@ class SoftToken:
     >>>
     """
 
-    def __init__(self, public_id, internalname, aeskey):
+    def __init__(self, public_id: str, internalname: str, aeskey: str) -> None:
         self.public_id = public_id
         self.internalname = internalname
         self.aeskey = aeskey
@@ -43,7 +43,7 @@ class SoftToken:
         self.timestamp_high = 0
         self.session_use = 0
 
-    def otp(self):
+    def otp(self) -> str:
         """ Generate OTP token """
         _random = '%.4x' % randint(0, 65536)
         counter_hex = '%.4x' % self.counter
@@ -65,7 +65,7 @@ class SoftToken:
         return self.public_id + aes128ecb_encrypt(self.aeskey, token)
 
 
-def main():
+def main() -> None:
     """ Main program """
     token = SoftToken('tetetetetecc', '8792ebfe26cc', 'ecde18dbe76fbd0c33330f1c354871db')
     token.counter = 19

@@ -16,6 +16,8 @@ import logging
 from random import getrandbits
 import re
 
+from typing import cast, Any, Dict, List, Optional, Union
+
 logger = logging.getLogger(__name__)
 
 HEX_CHARS = '0123456789abcdef'
@@ -25,14 +27,14 @@ MODHEX_TO_HEX_MAP = str.maketrans(MODHEX_CHARS, HEX_CHARS)
 HEX_TO_MODHEX_MAP = str.maketrans(HEX_CHARS, MODHEX_CHARS)
 
 
-def parse_querystring(query_string):
+def parse_querystring(query_string: str) -> Dict[str, Any]:
     """
     Parse request's query string
     >>> r = parse_querystring('/foo?bar=1&moo=abc&other=-123')
     >>> r == {'/foo?bar': 1, 'moo': 'abc', 'other': -123}
     True
     """
-    params = {}
+    params: Dict[str, Any] = {}
     for key, val in parse_qs(query_string).items():
         if (
             (val[0] == '0') or
@@ -45,27 +47,27 @@ def parse_querystring(query_string):
     return params
 
 
-def modhex2hex(modhex):
+def modhex2hex(modhex: str) -> str:
     """
     Turn modhex into regular hex
     >>> modhex2hex('aabbccddeeffnrfrjeelfvehntlnlvgejvcrtdvivfbh')
     'aa1100223344bc4c833a4f36bdabaf538f0cd2f7f416'
     """
-    # Python2 fails to translate unicode
+    print(f"MODHEX_TO_HEX_MAP Map: {MODHEX_TO_HEX_MAP}")
     return str(modhex).translate(MODHEX_TO_HEX_MAP)
 
 
-def hex2modhex(_hex):
+def hex2modhex(_hex: str) -> str:
     """
     Turn regular hex into modhex
     >>> hex2modhex('aa1100223344bc4c833a4f36bdabaf538f0cd2f7f416')
     'llbbccddeeffnrfrjeelfvehntlnlvgejvcrtdvivfbh'
     """
-    # Python2 fails to translate unicode
+    print(f"HEX_TO_MODHEX_MAP Map: {HEX_TO_MODHEX_MAP}")
     return str(_hex).translate(HEX_TO_MODHEX_MAP)
 
 
-def aes128ecb_decrypt(key, cipher):
+def aes128ecb_decrypt(key: str, cipher: str) -> str:
     """
     Decrypt ciphertext with key using AES128CBC encryption
     >>> key = 'abcdef0123456789abcdef0123456789'
@@ -74,17 +76,15 @@ def aes128ecb_decrypt(key, cipher):
     >>> plain == '46b029d5340bbd23b39c6c9154d095b1'
     True
     """
-    key = unhexlify(key)
-    # iv = unhexlify('00000000000000000000000000000000')
-    decryptor = AES.new(key, AES.MODE_ECB)
-    cipher = modhex2hex(cipher)
-    cipher = unhexlify(cipher)
-    plain = decryptor.decrypt(cipher)
-    plain = hexlify(plain)
-    return plain
+    decryptor = AES.new(unhexlify(key), AES.MODE_ECB)
+    cipher_hex = modhex2hex(cipher)
+    cipher_unhexlify = unhexlify(cipher_hex)
+    plain = decryptor.decrypt(cipher_unhexlify)
+    plain_hexlify = hexlify(plain).decode()
+    return plain_hexlify
 
 
-def aes128ecb_encrypt(key, plain):
+def aes128ecb_encrypt(key: str, plain: str) -> str:
     """
     Decrypt ciphertext with key using AES128CBC encryption
     >>> key = 'abcdef0123456789abcdef0123456789'
@@ -93,31 +93,26 @@ def aes128ecb_encrypt(key, plain):
     >>> cipher == '16e1e5d9d3991004452007e302000000'
     True
     """
-    key = unhexlify(key)
-    # iv = unhexlify('00000000000000000000000000000000')
-    encryptor = AES.new(key, AES.MODE_ECB)
-    plain = plain.encode() if not isinstance(plain, bytes) else plain
-    plain = unhexlify(plain)
-    cipher = encryptor.encrypt(plain)
+    encryptor = AES.new(unhexlify(key), AES.MODE_ECB)
+    cipher = encryptor.encrypt(unhexlify(plain.encode()))
     cipher = hexlify(cipher)
-    cipher = hex2modhex(cipher.decode())
-    return cipher
+    return hex2modhex(cipher.decode())
 
 
-def calculate_crc(token):
+def calculate_crc(token: str) -> int:
     """
     Calculate CRC-16
     >>> calculate_crc('16e1e5d9d3991004452007e302000000')
     22744
     """
     crc = 0xffff
-    token = unhexlify(token)
-    for i in range(len(token)):
-        if isinstance(token[i], str):
+    unhex_token = unhexlify(token)
+    for i in range(len(unhex_token)):
+        if isinstance(unhex_token[i], str):
             # Python 2.X
-            crc = crc ^ ord(token[i])
+            crc = crc ^ ord(unhex_token[i])
         else:
-            crc = crc ^ token[i]
+            crc = crc ^ unhex_token[i]
         for _ in range(8):
             last_bit_true = crc & 0x1
             crc = crc >> 1
@@ -126,7 +121,7 @@ def calculate_crc(token):
     return crc
 
 
-def check_crc(token):
+def check_crc(token: str) -> bool:
     """ Check the value of the CRC function """
     return calculate_crc(token) == 0xf0b8
 
@@ -152,14 +147,14 @@ def sign(data, apikey):
     return signature
 
 
-def generate_nonce():
+def generate_nonce() -> str:
     """
     Generate a random nonce
     """
     return hex(getrandbits(128))[2:-1]
 
 
-def counters_eq(params1, params2):
+def counters_eq(params1: Dict[str, int], params2: Dict[str, int]) -> bool:
     """
     Function to compare two set of parameters
     >>> p1 = {'yk_counter': 123, 'yk_use': 200}
@@ -176,7 +171,7 @@ def counters_eq(params1, params2):
     )
 
 
-def counters_gt(params1, params2):
+def counters_gt(params1: Dict[str, int], params2: Dict[str, int]) -> bool:
     """
     Function to compare two set of parameters
     >>> p1 = {'yk_counter': 123, 'yk_use': 200}
@@ -199,7 +194,7 @@ def counters_gt(params1, params2):
     )
 
 
-def counters_gte(params1, params2):
+def counters_gte(params1: Dict[str, int], params2: Dict[str, int]) -> bool:
     """
     Function to compare two set of parameters
     >>> p1 = {'yk_counter': 123, 'yk_use': 200}
@@ -233,10 +228,10 @@ SYNC_RESPONSE_CHECKS = {
 }
 
 
-def parse_sync_response(sync_response):
+def parse_sync_response(sync_response: str) -> Dict[str, Any]:
     """ Parsing query string parameters into a dict """
-    params = [line.split('=', 1) for line in sync_response.split('\r\n') if '=' in line]
-    params = dict(params)
+    params_list = [line.split('=', 1) for line in sync_response.split('\r\n') if '=' in line]
+    params = dict(params_list)
     for name, regex in SYNC_RESPONSE_CHECKS.items():
         if name not in params or not re.match(regex, params[name]):
             raise ValueError('Cannot parse "%s". Response from sync server:\n%s' %
@@ -247,7 +242,7 @@ def parse_sync_response(sync_response):
     return params
 
 
-def wsgi_response(resp, start_response, apikey=b'', extra=None, status=200):
+def wsgi_response(resp: str, start_response, apikey: bytes = b'', extra: Optional[Dict[str, Any]] = None, status: int = 200) -> List[bytes]:
     """ Function to return a proper WSGI response """
     # yubikey-val's getUTCTimeStamp() function...
     now = datetime.utcnow().isoformat().replace('.', 'Z')[:-2]

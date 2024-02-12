@@ -71,7 +71,10 @@ branch = true
 source = ["yubikit", "tests"]
 
 [tool.coverage.paths]
-source = ["yubikit", "*/site-packages"]
+source = ["yubikit", "tests"]
+
+[tool.coverage.report]
+fail_under = 15
 
 [tool.mypy]
 python_version = "3.8"
