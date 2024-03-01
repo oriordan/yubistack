@@ -33,6 +33,8 @@ requests_log.setLevel(logging.WARNING if logger.getEffectiveLevel() != 10 else l
 
 REQUIRED_PARAMS = ['modified', 'otp', 'nonce', 'yk_publicname',
                    'yk_counter', 'yk_use', 'yk_high', 'yk_low']
+
+
 class Sync(object):
     """ Sync object to handle cross synchronization requests """
     def __init__(self, db=None):
@@ -45,8 +47,7 @@ class Sync(object):
             if req_param not in sync_params:
                 logger.error("Received request with missing '%s' parameter", req_param)
                 raise YKSyncError('MISSING_PARAMETER', req_param)
-            if req_param not in ('otp', 'nonce', 'yk_publicname') and not \
-                (sync_params[req_param] == '-1' or isinstance(sync_params[req_param], int)):
+            if req_param not in ('otp', 'nonce', 'yk_publicname') and not (sync_params[req_param] == '-1' or isinstance(sync_params[req_param], int)):
                 logger.error("Input parameter '%s' is not correct", req_param)
                 raise YKSyncError('INVALID_PARAMETER', req_param)
 
@@ -73,8 +74,7 @@ class Sync(object):
             logger.warning('[%(yk_publicname)s] Remote server out of sync', sync_params)
 
         if counters_eq(local_params, sync_params):
-            if sync_params['modified'] == local_params['modified'] \
-                and sync_params['nonce'] == local_params['nonce']:
+            if sync_params['modified'] == local_params['modified'] and sync_params['nonce'] == local_params['nonce']:
                 # This is not an error. When the remote server received
                 # an OTP to verify, it would have sent out sync requests
                 # immediately. When the required number of responses had
@@ -86,10 +86,7 @@ class Sync(object):
                 logger.info('[%(yk_publicname)s] Sync request unnecessarily sent',
                             sync_params)
 
-            if (
-                    sync_params['modified'] != local_params['modified'] and
-                    sync_params['nonce'] == local_params['nonce']
-                ):
+            if sync_params['modified'] != local_params['modified'] and sync_params['nonce'] == local_params['nonce']:
                 delta_modified = sync_params['modified'] - local_params['modified']
                 if delta_modified < -1 or delta_modified > 1:
                     logger.warning('[%s] We might have a replay attack. 2 events '
@@ -117,7 +114,7 @@ class Sync(object):
         server_nonce = generate_nonce()
         for key in keys:
             local_params = self.db.get_local_params(key['yk_publicname'])
-            local_params['otp'] = 'c' * 32 # Fake an OTP
+            local_params['otp'] = 'c' * 32  # Fake an OTP
             logger.debug('Auth data: %s', local_params)
             for server in self.sync_servers:
                 self.db.enqueue(local_params, local_params, server, server_nonce)
@@ -181,19 +178,16 @@ class Sync(object):
                 logger.warning('[%(yk_publicname)s] Remote server out of sync', otp_params)
             if counters_gt(resp_params, local_params):
                 logger.warning('[%(yk_publicname)s] Local server out of sync', otp_params)
-            if counters_eq(resp_params, local_params) \
-                and resp_params['nonce'] != local_params['nonce']:
+            if counters_eq(resp_params, local_params) and resp_params['nonce'] != local_params['nonce']:
                 logger.warning('[%(yk_publicname)s] Servers out of sync. '
                                'Nonce differs.', otp_params)
-            if counters_eq(resp_params, local_params) \
-                and resp_params['modified'] != local_params['modified']:
+            if counters_eq(resp_params, local_params) and resp_params['modified'] != local_params['modified']:
                 logger.warning('[%(yk_publicname)s] Servers out of sync. '
                                'Modified differs.', otp_params)
             if counters_gt(resp_params, otp_params):
                 logger.warning('[%(yk_publicname)s] OTP is replayed. '
                                'Sync response counters higher than OTP counters.', otp_params)
-            elif counters_eq(resp_params, otp_params) \
-                and resp_params['nonce'] != otp_params['nonce']:
+            elif counters_eq(resp_params, otp_params) and resp_params['nonce'] != otp_params['nonce']:
                 logger.warning('[%(yk_publicname)s] OTP is replayed. Sync '
                                'response counters equal to OTP counters and nonce '
                                'differs.', otp_params)

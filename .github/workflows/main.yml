@@ -1,0 +1,61 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Testing
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+        db: ["sqlite", "mysql", "pgsql"]
+
+    steps:
+    - name: Shutdown Ubuntu MySQL (SUDO)
+      run: sudo service mysql stop # Shutdown the Default MySQL, "sudo" is necessary, please do not remove it
+      if: matrix.db == 'mysql'
+    - uses: mirromutth/mysql-action@v1.1
+      with:
+        mysql root password: 'root_pw' # Required if "mysql user" is empty, default is empty. The root superuser password
+        mysql user: 'yubistack' # Required if "mysql root password" is empty, default is empty. The superuser for the specified database. Can use secrets, too
+        mysql password: 'yubistack_pw' # Required if "mysql user" exists. The password for the "mysql user"
+      if: matrix.db == 'mysql'
+    - uses: harmon758/postgresql-action@v1
+      with:
+        postgresql user: 'yubistack'
+        postgresql password: 'yubistack_pw'
+      if: matrix.db == 'pgsql'
+    - name: Install PostgreSQL Client
+      run: |
+        sudo apt-get update
+        sudo apt-get install --yes --no-install-recommends postgresql-client
+      if: matrix.db == 'pgsql'
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: pip
+        check-latest: true
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install -r requirements.txt
+        python -m pip install flake8 pytest
+    - name: Lint with flake8
+      run: |
+        flake8 yubistack --config yubistack/setup.cfg
+    - name: Test with existing test
+      env:
+        DB: ${{ matrix.db }}
+      run: |
+        test/selftest.sh

@@ -1,0 +1,8 @@
+{
+    "flake8.path": [
+        "${workspaceFolder}/venv/bin/flake8"
+    ],
+    "flake8.args": [
+        "--config ${workspaceFolder}/yubistack/setup.cfg"
+    ]
+}

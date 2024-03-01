@@ -12,6 +12,7 @@ from .config import settings
 
 logger = logging.getLogger(__name__)
 
+
 class DBHandler:
     """ Database handler wrapper """
     def __init__(self, db):
@@ -37,7 +38,7 @@ class DBHandler:
                                              self.settings['USER'],
                                              self.settings['PASSWORD'],
                                              self.settings['NAME'],
-                                             self.settings.get('PORT', 3306))
+                                             int(self.settings.get('PORT', 3306)))
         elif self.settings['ENGINE'] == 'postgres':
             self._db = self.dbdriver.connect(database=self.settings['NAME'],
                                              user=self.settings['USER'],
@@ -74,8 +75,7 @@ class DBHandler:
 
     def _dictfetchall(self):
         """ Wrapper to return DB results in dict format """
-        return [dict(zip([col[0] for col in self.cursor.description], row)) \
-                for row in self.cursor.fetchall()]
+        return [dict(zip([col[0] for col in self.cursor.description], row)) for row in self.cursor.fetchall()]
 
     def _dictfetchone(self):
         """ Wrapper to return DB results in dict format """

@@ -66,6 +66,8 @@ URI_REGEX = re.compile(r"""
 PERSISTENT_OBJECTS = {}
 
 REQUIRED_AUTH_PARAMS = ['username', 'password', 'otp']
+
+
 def authenticate(environ, start_response):
     """
     Handle authentications
@@ -128,6 +130,7 @@ def authenticate(environ, start_response):
         logger.log(logger_sev, '[%(username)s][%(token_id)s] %(status)s: %(message)s', output)
         return [response.encode()]
 
+
 def decrypt(environ, start_response):
     """
     Handle OTP decryptions
@@ -162,10 +165,13 @@ def decrypt(environ, start_response):
         start_response(HTTP_STATUS_CODES[status_code], [('Content-Type', content_type)])
         return [output.encode()]
 
+
 PARAM_MAP = {
     'id': 'client_id',
     'sl': 'sync_level',
 }
+
+
 def verify(environ, start_response):
     """
     Handle OTP Validation
@@ -196,7 +202,8 @@ def verify(environ, start_response):
         logger.exception('%s: Backend error: %s', public_id, err)
         output = 'BACKEND_ERROR'
     finally:
-        return wsgi_response(output, start_response, apikey=apikey, extra=None)
+        return wsgi_response(output, start_response, apikey=apikey, extra=extra)
+
 
 def sync(environ, start_response):
     """
@@ -229,6 +236,7 @@ def sync(environ, start_response):
         return wsgi_response(output, start_response, apikey=''.encode(),
                              extra=local_params, status=status_code)
 
+
 def resync(environ, start_response):
     """
     Handle Re-sync requests
@@ -257,6 +265,7 @@ def resync(environ, start_response):
         start_response(HTTP_STATUS_CODES[status_code], [('Content-Type', 'text/plain')])
         return [output.encode()]
 
+
 def router(environ, start_response):
     """ Simple WSGI router """
     path = environ.get('PATH_INFO', '')
@@ -267,6 +276,7 @@ def router(environ, start_response):
     func = globals()[match.groupdict()['resource']]
     return func(environ, start_response)
 
+
 def main():
     """ Run a web server to test the application """
     from wsgiref.simple_server import make_server
@@ -274,6 +284,7 @@ def main():
                         level=logging.DEBUG)
     srv = make_server('0.0.0.0', 8080, router)
     srv.serve_forever()
+
 
 if __name__ == '__main__':
     main()

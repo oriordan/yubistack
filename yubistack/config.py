@@ -9,15 +9,15 @@ __all__ = [
     'settings',
 ]
 
-import imp
+from importlib.machinery import SourceFileLoader
 import os
 import logging
 
 # CONSTANTS
-TS_SEC = 0.128 # 8Hz timer of the HW token
+TS_SEC = 0.128  # 8Hz timer of the HW token
 TS_REL_TOLERANCE = 0.3
-TOKEN_LEN = 32 # Lengh of Yubikey OTP tokens
-OTP_MAX_LEN = 48 # TOKEN_LEN plus public identity of 0..16
+TOKEN_LEN = 32  # Lengh of Yubikey OTP tokens
+OTP_MAX_LEN = 48  # TOKEN_LEN plus public identity of 0..16
 
 SETTINGS_FILE = os.getenv('YUBISTACK_SETTINGS', '/etc/yubistack.conf')
 DEFAULT_CRYPT_CONTEXT = {
@@ -51,6 +51,7 @@ VALUES = [
     ('TS_ABS_TOLERANCE', 0),
 ]
 
+
 def parse(conf):
     """ Parse settings file parameters into a dict """
     _settings = {}
@@ -58,8 +59,9 @@ def parse(conf):
         _settings[conf_key] = getattr(conf, conf_key, default_value)
     return _settings
 
+
 if os.path.isfile(SETTINGS_FILE):
-    user_settings = imp.load_source('user_settings', SETTINGS_FILE)
+    user_settings = SourceFileLoader("user_settings", SETTINGS_FILE).load_module()
     settings = parse(user_settings)
 else:
     settings = dict(VALUES)

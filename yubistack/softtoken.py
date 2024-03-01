@@ -12,6 +12,7 @@ from .utils import (
     aes128ecb_encrypt,
 )
 
+
 class SoftToken:
     """
     SoftToken generator class
@@ -63,6 +64,7 @@ class SoftToken:
         token += crc_hex[2:4] + crc_hex[0:2]
         return self.public_id + aes128ecb_encrypt(self.aeskey, token)
 
+
 def main():
     """ Main program """
     token = SoftToken('tetetetetecc', '8792ebfe26cc', 'ecde18dbe76fbd0c33330f1c354871db')
@@ -73,6 +75,6 @@ def main():
     for _ in range(0, 5):
         print(token.otp())
 
+
 if __name__ == '__main__':
     main()
-

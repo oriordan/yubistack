@@ -1,6 +1,9 @@
 YubiStack
 =========
 
+.. image:: https://github.com/oriordan/yubistack/actions/workflows/main.yml/badge.svg?branch=main
+   :target: https://github.com/oriordan/yubistack/actions/workflows/main.yml?branch=main
+
 YubiStack provides a python re-implementation of:
 
 * `yubiauth <https://github.com/Yubico/yubiauth>`_: Authentication client with a simple user management system
@@ -12,7 +15,7 @@ NOTE: Only the authentication part is implemented from yubiauth, the user manage
 Installation
 ------------
 
-To install yubistak, simply:
+To install yubistack, simply:
 
 .. code-block:: bash
 

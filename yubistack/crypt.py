@@ -260,17 +260,17 @@ class PrivateKey(Crypter):
             sys.stdout.flush()
             while True:
                 key = sys.stdin.read(1)
-                if key in '\r\n': # return
+                if key in '\r\n':  # return
                     sys.stdout.write('\n')
                     sys.stdout.flush()
                     return ''.join(phrase)
-                elif key == chr(0x7f): # backspace
+                elif key == chr(0x7f):  # backspace
                     sys.stdout.write('\r' + ' ' * len(phrase))
                     if phrase:
                         phrase = phrase[:-1]
                     sys.stdout.write('\r' + '*' * len(phrase))
                     sys.stdout.flush()
-                elif key == chr(0x03): # ^C
+                elif key == chr(0x03):  # ^C
                     raise KeyboardInterrupt()
                 else:
                     if key in string.printable:

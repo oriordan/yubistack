@@ -35,10 +35,6 @@ __all__ = [
     'Validator',
 ]
 
-import imp
-import os
-import logging
-
 from .config import settings
 from .ykauth import Client
 from .ykksm import Decryptor
