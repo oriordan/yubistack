@@ -1,10 +1,8 @@
-YubiKit
+YubiStack
 =========
 
-This is a fork of `yubistack <https://github.com/oriordan/yubistack>`_
-
-.. image:: https://github.com/timhilliard/yubikit/actions/workflows/main.yml/badge.svg?branch=main
-   :target: https://github.com/timhilliard/yubikit/actions/workflows/main.yml?branch=main
+.. image:: https://github.com/oriordan/yubistack/actions/workflows/main.yml/badge.svg?branch=main
+   :target: https://github.com/oriordan/yubistack/actions/workflows/main.yml?branch=main
 
 YubiStack provides a python re-implementation of:
 
@@ -17,11 +15,11 @@ NOTE: Only the authentication part is implemented from yubiauth, the user manage
 Installation
 ------------
 
-To install yubistak, simply:
+To install yubistack, simply:
 
 .. code-block:: bash
 
-    $ sudo pip install yubikit
+    $ sudo pip install yubistack
 
 Configuration
 -------------
