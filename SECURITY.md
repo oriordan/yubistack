@@ -12,4 +12,4 @@ currently being supported with security updates.
 ## Reporting a Vulnerability
 
 Report vulnerabilities using GitHub
-https://github.com/timhilliard/yubikit/security
+https://github.com/oriordan/yubistack/security
